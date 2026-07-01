@@ -19,6 +19,19 @@
     "created_at": "2026-05-08T00:00:00Z",
     "buiry_version": "1.0.0"
   },
+  "config": {
+    "max_sessions_in_context": 5,
+    "auto_summarize_after": 10,
+    "dataset_capture": false,
+    "dataset_domain": ""
+  },
+  "summary": {
+    "current_phase": "Phase 3 Complete — Ready for Phase 4",
+    "overall_status": "active",
+    "last_updated": "2026-07-01T18:00:00Z",
+    "total_sessions": 13,
+    "open_issues": 2
+  },
   "sessions": [
     {
       "session_id": "session_001",
