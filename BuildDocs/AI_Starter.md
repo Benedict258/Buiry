@@ -152,5 +152,74 @@ Never assume. Always confirm before continuing.
 
 ---
 
+## 8. VALIDATE BEFORE WRITING
+
+Before appending a new session object to `Build-Context-Memory.json`, you MUST
+validate the object against the JSON Schema at `schemas/build-context-memory.schema.json`.
+
+Steps:
+1. Read the schema file if you haven't already.
+2. Check that every required field is present (`session_id`, `timestamp`, `ai_agent`,
+   `current_phase`, `progress`, `last_session_summary`, `changes_made`,
+   `file_module_map`, `decisions_log`, `known_issues`, `errors_encountered`, `next_steps`).
+3. Verify `session_id` matches the pattern `session_\d+` and is unique (not a duplicate).
+4. Verify `next_steps` has at least 1 item.
+5. Verify all enum fields (`severity`, `status`, `overall_status`) use valid values.
+6. If any field fails validation, fix it before writing. Do not write invalid data.
+
+An invalid session object breaks the dashboard, breaks ADK agents, and corrupts
+project history. Validation is not optional.
+
+---
+
+## 9. CLARIFY SCOPE
+
+Before starting any task, check if it falls within the scope defined in `PRD.md`.
+
+If the requested task is NOT described in the PRD or the current phase's
+deliverables in `DEV_PLAN.md`:
+
+1. Stop and flag the task as out-of-scope.
+2. Tell the developer: *"This task appears outside the current PRD scope. The PRD
+   defines [relevant section]. This request is [brief description of the gap].
+   Should I proceed, or should we update the PRD first?"*
+3. Do NOT build out-of-scope features without explicit developer approval.
+4. If approved, log the decision in `decisions_log` with reason: "Developer
+   approved out-of-scope task: [task name]".
+5. If the PRD needs updating, update it first, then proceed.
+
+This prevents scope creep and ensures every build session aligns with the
+project's defined goals.
+
+---
+
+## 10. LOG DATASET SIGNALS
+
+If `config.dataset_capture` is set to `true` in `Build-Context-Memory.json`, you
+MUST append dataset signals to the current session object.
+
+When dataset capture is enabled:
+1. After completing meaningful interactions (decisions made, errors resolved,
+   patterns repeated), create a dataset signal entry.
+2. Each signal goes in the `dataset_signals` array of the current session object.
+3. Signal format:
+   ```json
+   {
+     "signal_type": "decision_pattern | error_resolution | workflow_sequence",
+     "timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+     "metadata": {
+       "pattern": "brief structural description",
+       "category": "architecture | debugging | feature | refactor",
+       "reusability": "low | medium | high"
+     }
+   }
+   ```
+4. NEVER include raw user content, code snippets, or proprietary data in signals.
+   Only structural interaction patterns.
+5. If `config.dataset_capture` is `false`, skip this entirely. Do not add empty
+   signal arrays.
+
+---
+
 *This file is the contract between the developer and every AI agent on this project.
 Follow it completely, every session, without exception.*

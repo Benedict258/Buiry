@@ -382,16 +382,16 @@ module buiry::revenue_vault {
 
 | # | Milestone | Key Deliverable | Status |
 |---|---|---|---|
-| M1 | Foundation | `buiry-core` repo live on GitHub with refined schema, AI_Starter.md, all three templates | Not started |
+| M1 | Foundation | `buiry-core` repo live on GitHub with refined schema, AI_Starter.md, all three templates | **Partial** — repo exists, schema exists, AI_Starter exists, templates exist |
 | M2 | Schema hosting | JSON schema live at `buiry.dev/schema/v1/` | Not started |
-| M3 | MCP server — local mode | `buiry-mcp` published to npm, local file read/write working, 7 tools functional | Not started |
-| M4 | Cloud backend skeleton | Express API live, basic auth, session CRUD, MCP server wired to cloud | Not started |
+| M3 | MCP server — local mode | `buiry-mcp` published to npm, local file read/write working, 7 tools functional | **Complete** — 7 tools, separate files, config.ts, builds clean |
+| M4 | Cloud backend skeleton | Express API live, basic auth, session CRUD, MCP server wired to cloud | In progress |
 | M5 | MCP server — cloud mode | Sessions write to MemWal instead of local file, semantic search working | Not started |
 | M6 | TypeScript SDK | `buiry.wrap()` working for Anthropic + OpenAI, interactions captured and logged | Not started |
 | M7 | Data Agent — privacy pass | PII stripping functional, threshold check working, interactions buffered correctly | Not started |
 | M8 | Data Agent — full pipeline | Aggregation, categorization, Walrus storage, Sui registration all working end-to-end | Not started |
 | M9 | Python SDK | Same wrapping pattern as TypeScript SDK | Not started |
-| M10 | Developer dashboard | Session explorer, dataset browser live and wired to real data | Not started |
+| M10 | Developer dashboard | Session explorer, dataset browser live and wired to real data | **Partial** — 11 screens built, no API connection |
 | M11 | Sui contracts — testnet | WorkspaceOwnership + DatasetListing deployed and callable | Not started |
 | M12 | Marketplace | Dataset listing, purchase, revenue split working via Sui contracts | Not started |
 
@@ -399,9 +399,21 @@ module buiry::revenue_vault {
 
 ## 9. Current Sprint
 
+**Phase 0-1 — Foundation + MCP Server Local Mode**
+
 | Task | Owner | Status | Blocker |
 |---|---|---|---|
-| — | — | — | — |
+| Repo + schema + AI_Starter + templates | — | Done | — |
+| Scaffold `packages/buiry-mcp` TypeScript project | — | Done | — |
+| Implement all 7 MCP tools (init, start, end, log_decision, flag_issue, get_context, generate_docs) | — | Done | — |
+| Separate tools into individual files (session.ts, context.ts, init.ts, docs.ts) | — | Done | — |
+| Create config.ts for `.buiry/config.json` reading | — | Done | — |
+| Verify clean build | — | Done | — |
+| Create integration guides (Claude Code, Cursor, Copilot) | — | Done | — |
+| Scaffold `apps/api` Express backend | — | In progress | — |
+| Implement session CRUD routes | — | In progress | — |
+| Implement basic API key auth | — | In progress | — |
+| Build developer dashboard screens (11 screens) | — | Done | No API connection |
 
 > Update this section at the start of every sprint. Never leave it blank during active development.
 
@@ -411,23 +423,23 @@ module buiry::revenue_vault {
 
 > Prioritized list of work not yet started. Items at the top are highest priority.
 
-- [ ] Create GitHub org and `buiry-core` repo
-- [ ] Write refined `Build-Context-Memory.json` schema file
-- [ ] Write tightened `AI_Starter.md`
-- [ ] Write `PRD.md`, `ARCHITECTURE.md`, `DEV_PLAN.md` templates with real filled examples
+- [x] Create GitHub org and `buiry-core` repo
+- [x] Write refined `Build-Context-Memory.json` schema file
+- [x] Write tightened `AI_Starter.md`
+- [x] Write `PRD.md`, `ARCHITECTURE.md`, `DEV_PLAN.md` templates with real filled examples
 - [ ] Write README with step-by-step setup + exact starter prompt
 - [ ] Register `buiry.dev` domain
 - [ ] Host JSON schema at `buiry.dev/schema/v1/build-context-memory.json`
-- [ ] Scaffold `packages/buiry-mcp` TypeScript project
-- [ ] Implement `buiry_init` tool
-- [ ] Implement `buiry_start_session` tool
-- [ ] Implement `buiry_end_session` tool with schema validation
-- [ ] Implement `buiry_log_decision` tool
-- [ ] Implement `buiry_flag_issue` tool
-- [ ] Implement `buiry_get_context` tool (keyword search first, MemWal semantic later)
-- [ ] Implement `buiry_generate_docs` tool
-- [ ] Write Claude Code `.claude/settings.json` integration guide
-- [ ] Write Cursor integration guide
+- [x] Scaffold `packages/buiry-mcp` TypeScript project
+- [x] Implement `buiry_init` tool
+- [x] Implement `buiry_start_session` tool
+- [x] Implement `buiry_end_session` tool with schema validation
+- [x] Implement `buiry_log_decision` tool
+- [x] Implement `buiry_flag_issue` tool
+- [x] Implement `buiry_get_context` tool (keyword search first, MemWal semantic later)
+- [x] Implement `buiry_generate_docs` tool
+- [x] Write Claude Code `.claude/settings.json` integration guide
+- [x] Write Cursor integration guide
 - [ ] Publish `buiry-mcp` to npm
 - [ ] Scaffold `apps/api` Express backend
 - [ ] Implement session CRUD routes
@@ -455,7 +467,33 @@ module buiry::revenue_vault {
 
 > Append completed milestones here. Never delete entries. Each entry should include what was done and any decisions made.
 
-*(Nothing completed yet — this section will grow.)*
+### Phase 0 — Foundation (Complete)
+
+- Created GitHub repo `buiry-core`
+- Wrote `Build-Context-Memory.json` schema
+- Wrote `AI_Starter.md` for agent bootstrapping
+- Created `PRD.md`, `ARCHITECTURE.md`, `DEV_PLAN.md` templates with real filled examples
+
+### Phase 1 — MCP Server Local Mode (Complete)
+
+- Scaffolded `packages/buiry-mcp` TypeScript project
+- Implemented all 7 MCP tools:
+  - `buiry_init` — project file structure generation
+  - `buiry_start_session` — get context from last session
+  - `buiry_end_session` — save session to memory with schema validation
+  - `buiry_log_decision` — log a decision mid-session
+  - `buiry_flag_issue` — flag an issue mid-session
+  - `buiry_get_context` — search past sessions (keyword search)
+  - `buiry_generate_docs` — generate documents from session history
+- Separated tools into individual files: `session.ts`, `context.ts`, `init.ts`, `docs.ts`
+- Created `config.ts` for `.buiry/config.json` reading
+- Verified clean build
+- Created integration guides for Claude Code, Cursor, and GitHub Copilot
+
+### Phase 1.5 — Developer Dashboard (Partial)
+
+- Built 11 screens for dashboard UI
+- No API connection yet — screens are static/prototype
 
 ---
 

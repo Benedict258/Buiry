@@ -1,3 +1,25 @@
+/**
+ * ContextSearchModal — Cmd+K search overlay for project memory.
+ *
+ * This is the primary interface for searching across all Buiry session memory.
+ * It's modeled after VS Code's command palette and Linear's search — a modal
+ * overlay that appears instantly and supports keyboard navigation.
+ *
+ * Design choices:
+ *   - Cmd+K trigger: Industry standard for quick search (VS Code, Linear, Slack)
+ *   - Arrow key navigation: Keyboard-first UX for power users
+ *   - Match percentages: Show relevance scores to help users pick the best result
+ *   - Semantic Match / Vector Search labels: Indicate the search is context-aware
+ *   - Mock data: Uses hardcoded results for the hackathon demo; production would
+ *     call buiry_get_context MCP tool for real semantic search
+ *
+ * Keyboard shortcuts:
+ *   - Cmd+K or Ctrl+K: Toggle the modal
+ *   - Escape: Close the modal
+ *   - Arrow Up/Down: Navigate results
+ *   - Enter: Open selected result
+ */
+
 import { useEffect, useState, useRef } from "react";
 
 interface SearchResult {
@@ -12,6 +34,9 @@ interface SearchResult {
   tags: string[];
 }
 
+// Mock search results for the hackathon demo.
+// In production, these would come from the buiry_get_context MCP tool,
+// which searches across all session memory using semantic/vector search.
 const mockResults: SearchResult[] = [
   {
     id: "1",
@@ -57,11 +82,13 @@ interface ContextSearchModalProps {
 }
 
 export default function ContextSearchModal({ open, onClose }: ContextSearchModalProps) {
+  // Pre-populated with a query to show the search experience immediately
   const [query, setQuery] = useState("latency optimization");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  // Auto-focus the input when the modal opens for immediate typing
   useEffect(() => {
     if (open) {
       inputRef.current?.focus();
@@ -69,6 +96,8 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
     }
   }, [open]);
 
+  // Global Cmd+K handler to toggle the modal.
+  // This runs even when the modal is closed, so Cmd+K can open it.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -82,6 +111,9 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
+  // Modal-specific keyboard handlers: Escape to close, Arrow keys to navigate.
+  // These are only active when the modal is open to avoid interfering with other
+  // keyboard shortcuts when the modal is closed.
   useEffect(() => {
     if (!open) return;
 
@@ -103,6 +135,8 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
+  // Auto-scroll the selected result into view when navigating with arrow keys.
+  // block: "nearest" prevents unnecessary scrolling when the item is already visible.
   useEffect(() => {
     if (selectedIndex >= 0 && resultsRef.current) {
       const el = resultsRef.current.children[selectedIndex] as HTMLElement | undefined;
@@ -137,6 +171,10 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
           </kbd>
         </div>
 
+        {/* Filter chips — show active search modes.
+            "Semantic Match" indicates vector-based search (not just keyword).
+            "Last 30 Days" limits the time range for relevance.
+            These labels build trust by showing the user what search capabilities are active. */}
         <div className="flex items-center gap-sm px-lg py-sm border-b border-border-subtle overflow-x-auto">
           <span className="inline-flex items-center gap-xs px-sm py-xs rounded-full bg-primary-container text-on-primary-container text-xs font-medium whitespace-nowrap">
             <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
@@ -206,6 +244,9 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
           </button>
         </div>
 
+        {/* Footer — keyboard shortcut hints and branding.
+            Showing keyboard shortcuts teaches users the faster workflow.
+            "VectorEngine 2.0" branding reinforces the semantic search capability. */}
         <div className="flex items-center justify-between px-lg py-sm border-t border-border-subtle">
           <div className="flex items-center gap-md text-xs text-on-surface-variant">
             <span className="inline-flex items-center gap-xs">

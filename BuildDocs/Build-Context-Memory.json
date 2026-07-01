@@ -1,4 +1,5 @@
 {
+  "$schema": "https://buiry.dev/schema/v1/build-context-memory.json",
   "project_identity": {
     "name": "Buiry",
     "description": "BUild context memoRY — Developer infrastructure for persistent AI agent memory and dataset harvesting. MCP server + ADK agents + React dashboard.",

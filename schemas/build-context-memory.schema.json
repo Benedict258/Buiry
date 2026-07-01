@@ -1,0 +1,311 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://buiry.dev/schema/v1/build-context-memory.json",
+  "title": "Buiry Build Context Memory",
+  "description": "Schema for the Build-Context-Memory.json file that persists AI agent session history.",
+  "type": "object",
+  "required": ["project_identity", "sessions"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to the JSON Schema that validates this document."
+    },
+    "project_identity": {
+      "type": "object",
+      "description": "Immutable project metadata. Never modified after initialization.",
+      "required": ["name", "description", "version", "stack", "architecture_summary", "repo_url", "created_at", "owner", "buiry_version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Short project name."
+        },
+        "description": {
+          "type": "string",
+          "description": "One-paragraph project description."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "SemVer project version."
+        },
+        "stack": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Technology stack."
+        },
+        "architecture_summary": {
+          "type": "string",
+          "description": "One-paragraph architecture overview."
+        },
+        "repo_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Git repository URL."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 creation timestamp."
+        },
+        "owner": {
+          "type": "string",
+          "description": "Project owner or organization."
+        },
+        "buiry_version": {
+          "type": "string",
+          "description": "Buiry schema/tooling version."
+        }
+      },
+      "additionalProperties": false
+    },
+    "config": {
+      "type": "object",
+      "description": "Runtime configuration for context management.",
+      "properties": {
+        "max_sessions_in_context": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5,
+          "description": "Max sessions returned by get_context."
+        },
+        "auto_summarize_after": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "Auto-summarize after N sessions."
+        },
+        "dataset_capture": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable dataset signal logging."
+        },
+        "dataset_domain": {
+          "type": "string",
+          "description": "Domain label for captured dataset signals."
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "description": "Project-level summary computed from sessions.",
+      "properties": {
+        "current_phase": {
+          "type": "string",
+          "description": "Current development phase."
+        },
+        "overall_status": {
+          "type": "string",
+          "enum": ["active", "paused", "completed"],
+          "description": "Project status."
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last session update."
+        },
+        "total_sessions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total session count."
+        },
+        "open_issues": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of open known_issues."
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessions": {
+      "type": "array",
+      "description": "Append-only list of session objects.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["session_id", "timestamp", "ai_agent", "current_phase", "progress", "last_session_summary", "changes_made", "file_module_map", "decisions_log", "known_issues", "errors_encountered", "next_steps"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "pattern": "^session_\\d+$",
+            "description": "Unique session identifier (e.g. session_001)."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 session timestamp."
+          },
+          "ai_agent": {
+            "type": "string",
+            "description": "AI agent that ran this session."
+          },
+          "current_phase": {
+            "type": "string",
+            "description": "Development phase during this session."
+          },
+          "progress": {
+            "type": "object",
+            "required": ["completed", "in_progress", "blocked"],
+            "properties": {
+              "completed": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Tasks completed in this session."
+              },
+              "in_progress": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Tasks still in progress."
+              },
+              "blocked": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Blocked tasks."
+              }
+            },
+            "additionalProperties": false
+          },
+          "last_session_summary": {
+            "type": "string",
+            "description": "Summary of the previous session."
+          },
+          "changes_made": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Files or features changed in this session."
+          },
+          "file_module_map": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["file", "purpose", "last_modified"],
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "description": "Relative file path."
+                },
+                "purpose": {
+                  "type": "string",
+                  "description": "What this file does."
+                },
+                "last_modified": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "ISO 8601 last modified timestamp."
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "Files touched in this session."
+          },
+          "decisions_log": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["decision", "reason", "alternatives_considered"],
+              "properties": {
+                "decision": {
+                  "type": "string",
+                  "description": "What was decided."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Why this decision was made."
+                },
+                "alternatives_considered": {
+                  "type": "string",
+                  "description": "Other options considered."
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "Technical decisions and rationale."
+          },
+          "known_issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["issue", "severity", "status"],
+              "properties": {
+                "issue": {
+                  "type": "string",
+                  "description": "Description of the issue."
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"],
+                  "description": "Issue severity."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["open", "in-progress", "resolved"],
+                  "description": "Issue status."
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "Known issues from this session."
+          },
+          "errors_encountered": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["error", "context", "resolution"],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "description": "Error message or description."
+                },
+                "context": {
+                  "type": "string",
+                  "description": "When/where the error occurred."
+                },
+                "resolution": {
+                  "type": "string",
+                  "description": "How it was resolved or pending action."
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "Errors encountered and their resolution."
+          },
+          "next_steps": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "description": "Next actions for the following session. Must have at least 1 item."
+          },
+          "dataset_signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "signal_type": {
+                  "type": "string",
+                  "description": "Type of interaction pattern observed."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "metadata": {
+                  "type": "object",
+                  "description": "Structural pattern data (no raw user content)."
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "Captured interaction patterns for dataset harvesting."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Free-form notes about this session."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

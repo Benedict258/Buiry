@@ -1,7 +1,26 @@
+/**
+ * SessionExplorer — Timeline view of all coding sessions with filtering.
+ *
+ * This page shows every session in a vertical timeline with:
+ *   - Filter bar: Search by text, agent type, and development phase
+ *   - Timeline: Sessions grouped by day (Today, Yesterday, older)
+ *   - Session cards: Expandable cards with summary, agent, phase, and token counts
+ *
+ * Design choices:
+ *   - Timeline layout: Visual metaphor for chronological session history
+ *   - Sticky filter bar: Stays visible while scrolling through sessions
+ *   - Expandable cards: Show summary by default, full details on click
+ *   - Token counts: Estimated from changes_made count (heuristic for demo)
+ *
+ * The mapSession() function transforms raw SessionObject data into a UI-friendly
+ * shape, similar to sessionToDetail() in SessionDetailModal.
+ */
+
 import { useEffect, useState } from "react";
 import { getSessions } from "../lib/api";
 import type { SessionObject } from "../lib/types";
 
+/** UI-friendly session data shape for the timeline cards */
 interface SessionCardData {
   id: string;
   agent: string;
@@ -15,20 +34,37 @@ interface SessionCardData {
   outputTokens: string;
 }
 
+/**
+ * Transform a raw SessionObject into the UI-friendly SessionCardData.
+ *
+ * Key transformations:
+ *   - Derives relative date label (today/yesterday/Nd ago) from timestamp
+ *   - Normalizes agent name to a key (claude/cursor/copilot) for color mapping
+ *   - Infers status from session notes (active/completed/archived)
+ *   - Estimates token counts from changes_made count (heuristic)
+ *
+ * @param s - Raw SessionObject from Build-Context-Memory.json
+ * @returns SessionCardData for timeline card rendering
+ */
 function mapSession(s: SessionObject): SessionCardData {
   const ts = new Date(s.timestamp);
   const now = new Date();
   const diffMs = now.getTime() - ts.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+  // Relative date label for grouping sessions in the timeline
   const dateLabel = diffDays === 0 ? "today" : diffDays === 1 ? "yesterday" : `${diffDays}d ago`;
 
+  // Normalize agent name to a key for color mapping.
+  // Default to "copilot" for unknown agents.
   const agentKey = s.ai_agent.toLowerCase().includes("claude")
     ? "claude"
     : s.ai_agent.toLowerCase().includes("cursor")
       ? "cursor"
       : "copilot";
 
+  // Infer status from session notes — this is a heuristic for the demo.
+  // Production would have an explicit status field in the session object.
   const status =
     s.notes?.toLowerCase().includes("active") || s.notes?.toLowerCase().includes("active session")
       ? "ACTIVE"
@@ -36,6 +72,8 @@ function mapSession(s: SessionObject): SessionCardData {
         ? "COMPLETED"
         : "ARCHIVED";
 
+  // Estimate token counts from changes_made count.
+  // These multipliers are rough averages for coding sessions.
   const inputTokens = `${(s.changes_made.length * 3.2 + 8).toFixed(1)}k`;
   const outputTokens = `${(s.changes_made.length * 1.1 + 1.2).toFixed(1)}k`;
 
@@ -53,12 +91,16 @@ function mapSession(s: SessionObject): SessionCardData {
   };
 }
 
+// Agent badge colors — each agent type gets a distinct color for quick identification.
+// This mapping is used in the session card to show which AI agent ran the session.
 const agentColors: Record<string, string> = {
   claude: "bg-tertiary/20 text-tertiary border border-tertiary/30",
   cursor: "bg-primary/20 text-primary border border-primary/30",
   copilot: "bg-secondary/20 text-secondary border border-secondary/30",
 };
 
+// Phase badge colors — development phases get distinct colors for visual filtering.
+// Users can scan the timeline and identify phase patterns at a glance.
 const phaseColors: Record<string, string> = {
   Optimization: "bg-tertiary/20 text-tertiary border border-tertiary/30",
   Debugging: "bg-primary/20 text-primary border border-primary/30",
@@ -66,6 +108,8 @@ const phaseColors: Record<string, string> = {
   Refactoring: "bg-primary/20 text-primary border border-primary/30",
 };
 
+// Status styles — ACTIVE gets a pulsing green dot, others are muted.
+// The pulse animation draws attention to active sessions in the timeline.
 const statusStyles: Record<string, { dot: string; badge: string }> = {
   ACTIVE: {
     dot: "bg-status-success animate-pulse",
@@ -88,10 +132,12 @@ export default function SessionExplorer() {
   const [agentFilter, setAgentFilter] = useState("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
 
+  // Fetch sessions on mount and transform them to UI-friendly shape
   useEffect(() => {
     getSessions().then((raw) => setSessions(raw.map(mapSession)));
   }, []);
 
+  // Load Material Icons Round on demand for this page
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -103,10 +149,13 @@ export default function SessionExplorer() {
     };
   }, []);
 
+  // Toggle card expansion — clicking an expanded card collapses it
   const toggleExpand = (id: string) => {
     setExpanded((prev) => (prev === id ? null : id));
   };
 
+  // Multi-filter logic: all filters must pass (AND logic).
+  // Search is case-insensitive and matches against summary, phase, and agent name.
   const filteredSessions = sessions.filter(
     (s) =>
       (agentFilter === "all" || s.agentKey === agentFilter) &&
@@ -117,6 +166,7 @@ export default function SessionExplorer() {
         s.agent.toLowerCase().includes(search.toLowerCase()))
   );
 
+  // Group sessions by day for the timeline sections
   const todaySessions = filteredSessions.filter((s) => s.date === "today");
   const yesterdaySessions = filteredSessions.filter((s) => s.date === "yesterday");
 
@@ -257,6 +307,19 @@ export default function SessionExplorer() {
   );
 }
 
+/**
+ * SessionCard — Individual session entry in the timeline.
+ *
+ * Shows a compact summary by default (agent, phase, status, timestamp).
+ * Expands on click to reveal full details (session ID, instance, status, summary).
+ *
+ * Design choices:
+ *   - Connector dot on the left links cards to the timeline stem
+ *   - Status dot pulses for ACTIVE sessions to draw attention
+ *   - Footer shows token counts (input/output) for cost tracking
+ *   - "VIEW_FULL_STREAM" vs "VIEW_SNAPSHOT" button changes based on status
+ *   - e.stopPropagation() on the footer button prevents card toggle on click
+ */
 function SessionCard({
   session,
   expanded,

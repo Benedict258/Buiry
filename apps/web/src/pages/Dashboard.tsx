@@ -1,7 +1,27 @@
+/**
+ * Dashboard — Project overview and active session summary.
+ *
+ * This is the landing page that shows:
+ *   - Hero banner: Active session with summary and quick actions
+ *   - Stats grid: Current phase, open issues, active agents
+ *   - Activity chart: Session frequency over the last 7 days
+ *   - Recent decisions: Latest architectural choices with tags
+ *
+ * Design choices:
+ *   - Data is fetched from getMemory() which reads Build-Context-Memory.json
+ *     via the MCP server. The dashboard reflects the real project state.
+ *   - The hero banner prioritizes the active session because that's what
+ *     users care about most — "what's happening right now?"
+ *   - Recent decisions are tagged (SECURITY, CODE-REVIEW, PERFORMANCE) to
+ *     help users quickly identify the type of decision at a glance.
+ */
+
 import { useEffect, useState } from "react";
 import { getMemory } from "../lib/api";
 import type { BuildContextMemory } from "../lib/types";
 
+// Mock chart data for the hackathon demo.
+// Production would derive this from session timestamps in memory.
 const chartBars = [
   { height: "45%", label: "Mon" },
   { height: "70%", label: "Tue" },
@@ -12,6 +32,8 @@ const chartBars = [
   { height: "60%", label: "Sun" },
 ];
 
+// Tag colors follow the design system's semantic color tokens.
+// Each tag type has a distinct color for quick visual identification.
 const tagColors: Record<string, string> = {
   SECURITY: "bg-status-error/20 text-status-error border border-status-error/30",
   "CODE-REVIEW": "bg-primary/20 text-primary border border-primary/30",
@@ -21,10 +43,12 @@ const tagColors: Record<string, string> = {
 export default function Dashboard() {
   const [memory, setMemory] = useState<BuildContextMemory | null>(null);
 
+  // Fetch memory on mount — this populates all dashboard sections
   useEffect(() => {
     getMemory().then(setMemory);
   }, []);
 
+  // Load Material Icons Round on demand for this page only
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -36,9 +60,13 @@ export default function Dashboard() {
     };
   }, []);
 
+  // The most recent session is the "active" one — shown in the hero banner
   const activeSession = memory?.sessions[0];
   const summary = memory?.summary;
 
+  // Derive recent decisions from all sessions, tagged by phase type.
+  // This flattening + tagging pattern turns structured session data into
+  // a flat list of displayable decision cards.
   const recentDecisions = memory?.sessions
     .flatMap((s) =>
       s.decisions_log.map((d) => ({
@@ -48,6 +76,8 @@ export default function Dashboard() {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        // Tag inference: match phase or decision content to tag categories.
+        // This is a heuristic — production would use a proper tagging system.
         tag: s.current_phase.toUpperCase().includes("OPTIM")
           ? "PERFORMANCE"
           : s.current_phase.toUpperCase().includes("SECUR") ||
@@ -60,7 +90,10 @@ export default function Dashboard() {
 
   return (
     <div className="p-lg space-y-lg max-w-[1200px] mx-auto">
-      {/* ── Hero Banner ───────────────────────────────────────────── */}
+      {/* ── Hero Banner ─────────────────────────────────────────────
+          Shows the active session with summary and quick actions.
+          The left side has session info, the right side has performance stats.
+          This is the "hero" because it's the most important information on the page. */}
       <section className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden">
         <div className="flex">
           {/* left */}
@@ -133,9 +166,15 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* ── Stats Grid ────────────────────────────────────────────── */}
+      {/* ── Stats Grid ──────────────────────────────────────────────
+          Three-column grid showing key project metrics at a glance.
+          Each card has a label, value, and supplementary detail (progress bar,
+          priority badges, agent avatars). This layout scales well to more cards
+          if needed. */}
       <section className="grid grid-cols-3 gap-md">
-        {/* Current Phase */}
+        {/* Current Phase — shows which development phase the project is in
+            and a progress bar for visual feedback on completion. */}
+
         <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
           <div className="flex justify-between items-center">
             <span className="font-section-header text-sm font-semibold text-text-primary">
@@ -164,7 +203,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Open Issues */}
+        {/* Open Issues — count of unresolved problems with priority badges.
+            Priority is inferred from issue content (heuristic for demo). */}
         <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
           <div className="flex justify-between items-center">
             <span className="font-section-header text-sm font-semibold text-text-primary">
@@ -189,7 +229,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Active Agents */}
+        {/* Active Agents — shows connected AI agents with status indicators.
+            The avatar stack and agent list provide both visual and detailed views. */}
         <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
           <div className="flex justify-between items-center">
             <span className="font-section-header text-sm font-semibold text-text-primary">
@@ -240,9 +281,12 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* ── Activity & Decisions ───────────────────────────────────── */}
+      {/* ── Activity & Decisions ─────────────────────────────────────
+          Two-column layout: activity chart (8 cols) + recent decisions (4 cols).
+          The 8:4 ratio prioritizes the chart while keeping decisions visible. */}
       <section className="grid grid-cols-12 gap-md">
-        {/* Activity chart — 8 cols */}
+        {/* Activity chart — 8 cols. Shows session frequency over the last 7 days.
+            The highlighted bar (Friday) draws attention to the most active day. */}
         <div className="col-span-8 bg-surface-card border border-border-subtle rounded-lg p-lg">
           <div className="flex justify-between items-center mb-lg">
             <span className="font-section-header text-sm font-semibold text-text-primary">
@@ -273,7 +317,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Decisions — 4 cols */}
+        {/* Recent Decisions — 4 cols. Shows the latest 3 decisions with tags.
+            Each decision links to its session for full context. */}
         <div className="col-span-4 bg-surface-card border border-border-subtle rounded-lg p-lg flex flex-col">
           <div className="flex justify-between items-center mb-lg">
             <span className="font-section-header text-sm font-semibold text-text-primary">
