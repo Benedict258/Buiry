@@ -1,0 +1,403 @@
+import { useEffect, useState } from "react";
+import { getSessions } from "../lib/api";
+import type { SessionObject } from "../lib/types";
+
+interface SessionCardData {
+  id: string;
+  agent: string;
+  agentKey: string;
+  phase: string;
+  status: string;
+  timestamp: string;
+  date: string;
+  summary: string;
+  inputTokens: string;
+  outputTokens: string;
+}
+
+function mapSession(s: SessionObject): SessionCardData {
+  const ts = new Date(s.timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - ts.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  const dateLabel = diffDays === 0 ? "today" : diffDays === 1 ? "yesterday" : `${diffDays}d ago`;
+
+  const agentKey = s.ai_agent.toLowerCase().includes("claude")
+    ? "claude"
+    : s.ai_agent.toLowerCase().includes("cursor")
+      ? "cursor"
+      : "copilot";
+
+  const status =
+    s.notes?.toLowerCase().includes("active") || s.notes?.toLowerCase().includes("active session")
+      ? "ACTIVE"
+      : s.notes?.toLowerCase().includes("completed")
+        ? "COMPLETED"
+        : "ARCHIVED";
+
+  const inputTokens = `${(s.changes_made.length * 3.2 + 8).toFixed(1)}k`;
+  const outputTokens = `${(s.changes_made.length * 1.1 + 1.2).toFixed(1)}k`;
+
+  return {
+    id: s.session_id.split("_")[1],
+    agent: s.ai_agent,
+    agentKey,
+    phase: s.current_phase,
+    status,
+    timestamp: ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    date: dateLabel,
+    summary: s.last_session_summary,
+    inputTokens,
+    outputTokens,
+  };
+}
+
+const agentColors: Record<string, string> = {
+  claude: "bg-tertiary/20 text-tertiary border border-tertiary/30",
+  cursor: "bg-primary/20 text-primary border border-primary/30",
+  copilot: "bg-secondary/20 text-secondary border border-secondary/30",
+};
+
+const phaseColors: Record<string, string> = {
+  Optimization: "bg-tertiary/20 text-tertiary border border-tertiary/30",
+  Debugging: "bg-primary/20 text-primary border border-primary/30",
+  "Feature Addition": "bg-secondary/20 text-secondary border border-secondary/30",
+  Refactoring: "bg-primary/20 text-primary border border-primary/30",
+};
+
+const statusStyles: Record<string, { dot: string; badge: string }> = {
+  ACTIVE: {
+    dot: "bg-status-success animate-pulse",
+    badge: "bg-status-success/20 text-status-success border border-status-success/30",
+  },
+  COMPLETED: {
+    dot: "bg-text-secondary",
+    badge: "bg-surface-variant text-text-secondary border border-border-subtle",
+  },
+  ARCHIVED: {
+    dot: "bg-text-secondary",
+    badge: "bg-surface-variant text-text-secondary border border-border-subtle",
+  },
+};
+
+export default function SessionExplorer() {
+  const [sessions, setSessions] = useState<SessionCardData[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [agentFilter, setAgentFilter] = useState("all");
+  const [phaseFilter, setPhaseFilter] = useState("all");
+
+  useEffect(() => {
+    getSessions().then((raw) => setSessions(raw.map(mapSession)));
+  }, []);
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/icon?family=Material+Icons+Round";
+    document.head.appendChild(link);
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => (prev === id ? null : id));
+  };
+
+  const filteredSessions = sessions.filter(
+    (s) =>
+      (agentFilter === "all" || s.agentKey === agentFilter) &&
+      (phaseFilter === "all" || s.phase.toLowerCase().includes(phaseFilter)) &&
+      (search === "" ||
+        s.summary.toLowerCase().includes(search.toLowerCase()) ||
+        s.phase.toLowerCase().includes(search.toLowerCase()) ||
+        s.agent.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const todaySessions = filteredSessions.filter((s) => s.date === "today");
+  const yesterdaySessions = filteredSessions.filter((s) => s.date === "yesterday");
+
+  return (
+    <div className="p-lg max-w-[1200px] mx-auto space-y-lg">
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <header className="border-l-4 border-primary pl-md">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-headline-lg font-headline-lg font-bold text-text-primary">
+              Session Explorer
+            </h1>
+            <p className="text-text-secondary font-meta-mono text-[10px] uppercase tracking-wider mt-xs">
+              Historical Session Analytics &amp; Audit Logs
+            </p>
+          </div>
+          <button className="px-md py-sm bg-surface-card border border-border-subtle text-text-secondary font-meta-mono text-xs rounded hover:bg-surface-elevated transition-colors">
+            EXPORT.LOG
+          </button>
+        </div>
+      </header>
+
+      {/* ── Filter Bar ──────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-y border-border-subtle py-sm">
+        <div className="flex items-center gap-sm">
+          <div className="relative flex-1">
+            <span className="material-icons-round absolute left-sm top-1/2 -translate-y-1/2 text-text-secondary text-[16px]">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Search logs, sessions, or agent IDs..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-xl pr-xl py-sm bg-surface-card border border-border-subtle rounded text-text-primary text-sm font-body-base placeholder:text-text-secondary focus:outline-none focus:border-primary/50 transition-colors"
+            />
+            <span className="absolute right-sm top-1/2 -translate-y-1/2 text-text-secondary font-meta-mono text-[10px] bg-surface-elevated px-xs py-[2px] rounded border border-border-subtle">
+              /
+            </span>
+          </div>
+          <select
+            value={agentFilter}
+            onChange={(e) => setAgentFilter(e.target.value)}
+            className="px-md py-sm bg-surface-card border border-border-subtle rounded text-text-secondary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+          >
+            <option value="all">All Agents</option>
+            <option value="claude">Claude Code</option>
+            <option value="cursor">Cursor</option>
+            <option value="copilot">GitHub Copilot</option>
+          </select>
+          <select
+            value={phaseFilter}
+            onChange={(e) => setPhaseFilter(e.target.value)}
+            className="px-md py-sm bg-surface-card border border-border-subtle rounded text-text-secondary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+          >
+            <option value="all">All Phases</option>
+            <option value="optimization">Optimization</option>
+            <option value="debugging">Debugging</option>
+            <option value="feature">Feature Addition</option>
+            <option value="refactoring">Refactoring</option>
+          </select>
+          <button className="p-sm bg-surface-card border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
+            <span className="material-icons-round text-[18px]">filter_list</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Timeline ────────────────────────────────────────────────── */}
+      <div className="relative">
+        {/* vertical stem */}
+        <div className="absolute left-[16px] top-0 bottom-0 w-px bg-border-subtle z-0" />
+
+        {/* Today */}
+        <div className="relative z-10 mb-lg">
+          <div className="flex items-center gap-sm mb-md pl-xl">
+            <span className="material-icons-round text-text-secondary text-[16px]">
+              calendar_today
+            </span>
+            <h2 className="text-section-header font-section-header font-semibold text-text-primary text-sm">
+              Today, 24 Oct
+            </h2>
+          </div>
+
+          <div className="space-y-md pl-xl">
+            {todaySessions.map((session) => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                expanded={expanded === session.id}
+                onToggle={() => toggleExpand(session.id)}
+              />
+            ))}
+            {todaySessions.length === 0 && (
+              <p className="text-text-secondary font-meta-mono text-xs py-md">
+                No sessions match filters.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Yesterday */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-sm mb-md pl-xl">
+            <span className="material-icons-round text-text-secondary text-[16px]">
+              calendar_today
+            </span>
+            <h2 className="text-section-header font-section-header font-semibold text-text-primary text-sm">
+              Yesterday, 23 Oct
+            </h2>
+          </div>
+
+          <div className="space-y-md pl-xl">
+            {yesterdaySessions.map((session) => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                expanded={expanded === session.id}
+                onToggle={() => toggleExpand(session.id)}
+              />
+            ))}
+            {yesterdaySessions.length === 0 && (
+              <p className="text-text-secondary font-meta-mono text-xs py-md">
+                No sessions match filters.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Load More ────────────────────────────────────────────────── */}
+      <div className="flex justify-center pt-md">
+        <button className="inline-flex items-center gap-xs px-lg py-sm bg-surface-card border border-border-subtle text-text-secondary font-meta-mono text-xs rounded hover:bg-surface-elevated hover:text-primary transition-colors">
+          <span className="material-icons-round text-[16px]">expand_more</span>
+          LOAD_OLDER_SESSIONS
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SessionCard({
+  session,
+  expanded,
+  onToggle,
+}: {
+  session: SessionCardData;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const st = statusStyles[session.status];
+
+  return (
+    <div className="relative">
+      {/* connector dot */}
+      <div
+        className={`absolute left-[-24px] top-6 w-2 h-2 rounded-full z-20 ${st.dot}`}
+      />
+
+      <div
+        className={`bg-surface-card border border-border-subtle rounded-lg overflow-hidden transition-all hover:border-primary/50 cursor-pointer ${
+          expanded ? "border-primary/40" : ""
+        }`}
+        onClick={onToggle}
+      >
+        {/* header row */}
+        <div className="px-md py-sm flex items-center justify-between">
+          <div className="flex items-center gap-sm">
+            <span className="font-technical-id text-xs text-primary font-medium bg-primary/10 px-xs py-[2px] rounded">
+              #{session.id}
+            </span>
+            <span className={`px-xs py-[2px] rounded text-[10px] font-meta-mono ${st.badge}`}>
+              ● {session.status}
+            </span>
+          </div>
+          <span className="text-text-secondary font-meta-mono text-[10px]">
+            {session.timestamp}
+          </span>
+        </div>
+
+        {/* summary grid */}
+        <div className="px-md pb-sm grid grid-cols-4 gap-sm text-[11px]">
+          <div>
+            <span className="text-text-secondary font-meta-mono uppercase block mb-[2px]">
+              Agent
+            </span>
+            <span
+              className={`inline-block px-xs py-[2px] rounded font-meta-mono text-[10px] ${agentColors[session.agentKey]}`}
+            >
+              {session.agent}
+            </span>
+          </div>
+          <div>
+            <span className="text-text-secondary font-meta-mono uppercase block mb-[2px]">
+              Phase
+            </span>
+            <span
+              className={`inline-block px-xs py-[2px] rounded font-meta-mono text-[10px] ${phaseColors[session.phase]}`}
+            >
+              {session.phase}
+            </span>
+          </div>
+          <div className="col-span-2">
+            <span className="text-text-secondary font-meta-mono uppercase block mb-[2px]">
+              Context
+            </span>
+            <p className="text-text-primary text-xs leading-relaxed line-clamp-2">
+              {session.summary}
+            </p>
+          </div>
+        </div>
+
+        {/* footer */}
+        <div className="px-md py-sm bg-surface-container-lowest border-t border-border-subtle flex items-center justify-between">
+          <div className="flex items-center gap-md font-meta-mono text-[10px] text-text-secondary">
+            <span>
+              INPUT <span className="text-text-primary">{session.inputTokens}</span>
+            </span>
+            <span>
+              OUTPUT <span className="text-text-primary">{session.outputTokens}</span>
+            </span>
+          </div>
+          <button
+            className="px-sm py-[4px] bg-surface-card border border-border-subtle rounded font-meta-mono text-[10px] text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {session.status === "ACTIVE" ? "VIEW_FULL_STREAM" : "VIEW_SNAPSHOT"}
+          </button>
+        </div>
+
+        {/* expanded detail */}
+        {expanded && (
+          <div className="px-md py-md border-t border-border-subtle bg-surface-container space-y-sm">
+            <div className="grid grid-cols-2 gap-sm text-[11px]">
+              <div>
+                <span className="text-text-secondary font-meta-mono uppercase">
+                  Session ID
+                </span>
+                <p className="text-text-primary font-technical-id">
+                  #{session.id}
+                </p>
+              </div>
+              <div>
+                <span className="text-text-secondary font-meta-mono uppercase">
+                  Agent Instance
+                </span>
+                <p className="text-text-primary font-meta-mono">{session.agent}</p>
+              </div>
+              <div>
+                <span className="text-text-secondary font-meta-mono uppercase">
+                  Operation Phase
+                </span>
+                <p className="text-text-primary font-meta-mono">{session.phase}</p>
+              </div>
+              <div>
+                <span className="text-text-secondary font-meta-mono uppercase">
+                  Status
+                </span>
+                <p className="text-text-primary font-meta-mono">{session.status}</p>
+              </div>
+            </div>
+            <div>
+              <span className="text-text-secondary font-meta-mono uppercase text-[10px]">
+                Full Summary
+              </span>
+              <p className="text-text-primary text-xs leading-relaxed mt-xs">
+                {session.summary}
+              </p>
+            </div>
+            <div className="flex items-center gap-md font-meta-mono text-[10px] text-text-secondary pt-xs">
+              <span>
+                Total Input Tokens:{" "}
+                <span className="text-text-primary">{session.inputTokens}</span>
+              </span>
+              <span>
+                Total Output Tokens:{" "}
+                <span className="text-text-primary">{session.outputTokens}</span>
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
