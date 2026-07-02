@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: buiry
+      POSTGRES_PASSWORD: buiry_dev_password
+      POSTGRES_DB: buiry_dev
+
+  redis:
+    ports:
+      - "6379:6379"

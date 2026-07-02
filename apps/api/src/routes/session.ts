@@ -3,8 +3,12 @@ import { z } from 'zod'
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
+import { MemWalClient } from '../memwal/client.js'
 
 export const sessionRoutes = Router()
+
+const memwal = new MemWalClient()
+memwal.connect().catch(() => {})
 
 const SESSION_FILE = join(process.cwd(), 'data', 'Build-Context-Memory.json')
 
@@ -81,6 +85,16 @@ sessionRoutes.post('/end', async (req: Request, res: Response) => {
   }
   context.sessions.push(session)
   await writeContext(context)
+
+  // Write to MemWal cloud backend if available
+  if (memwal.isAvailable()) {
+    try {
+      await memwal.writeSession(session.project, session)
+    } catch (err) {
+      console.warn('[Session] MemWal write failed:', err)
+    }
+  }
+
   res.json({ sessionId: session.id, timestamp: session.timestamp })
 })
 
@@ -95,6 +109,20 @@ sessionRoutes.get('/:id', async (req: Request, res: Response) => {
 sessionRoutes.post('/search', async (req: Request, res: Response) => {
   const { query } = req.body as { query?: string }
   if (!query) return res.status(400).json({ error: 'query is required' })
+
+  // Try MemWal semantic search first
+  if (memwal.isAvailable()) {
+    try {
+      const result = await memwal.recall('*', query, 10)
+      if (result && result.results.length > 0) {
+        return res.json({ results: result.results, total: result.results.length, source: 'memwal' })
+      }
+    } catch (err) {
+      console.warn('[Session] MemWal recall failed, falling back to local:', err)
+    }
+  }
+
+  // Fallback: local file search
   const context = await readContext()
   const q = query.toLowerCase()
   const results = context.sessions.filter(s =>
@@ -102,5 +130,5 @@ sessionRoutes.post('/search', async (req: Request, res: Response) => {
     s.decisions.some(d => d.toLowerCase().includes(q)) ||
     s.nextSteps.some(n => n.toLowerCase().includes(q))
   )
-  res.json({ results, total: results.length })
+  res.json({ results, total: results.length, source: 'local' })
 })
