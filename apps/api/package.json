@@ -12,10 +12,12 @@
     "@mysten/memwal": "^0.0.2",
     "@mysten/sui": "^2.20.1",
     "@mysten/walrus": "^1.2.3",
+    "@types/pg": "^8.20.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
     "helmet": "^8.0.0",
+    "pg": "^8.22.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
