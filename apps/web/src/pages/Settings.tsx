@@ -18,7 +18,7 @@ const retentionOptions = ["7 days", "30 days", "90 days", "1 year"];
 
 export default function Settings() {
   const [autoCapture, setAutoCapture] = useState(true);
-  const [domain, setDomain] = useState("api.devlabos.io");
+  const [domain, setDomain] = useState("");
   const [region, setRegion] = useState("us-east-1");
   const [retention, setRetention] = useState("30 days");
   const [toggleStates, setToggleStates] = useState<Record<string, boolean>>({
@@ -42,6 +42,8 @@ export default function Settings() {
     setToggleStates((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const apiKey = import.meta.env.VITE_BUIRY_API_KEY || "";
+
   return (
     <div className="p-lg max-w-[1200px] mx-auto space-y-lg">
       {/* ── Header ──────────────────────────────────────────────────── */}
@@ -55,9 +57,9 @@ export default function Settings() {
       </header>
 
       {/* ── Two-Column Layout ───────────────────────────────────────── */}
-      <div className="grid grid-cols-12 gap-lg">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-lg">
         {/* ── Left Column (8 cols) ──────────────────────────────────── */}
-        <div className="col-span-8 space-y-lg">
+        <div className="col-span-12 md:col-span-8 space-y-lg">
           {/* API Credentials */}
           <section className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
             <h2 className="font-section-header text-sm font-semibold text-text-primary">
@@ -66,32 +68,17 @@ export default function Settings() {
 
             <div className="space-y-sm">
               <label className="text-text-secondary font-meta-mono text-[10px] uppercase">
-                Production API Key
+                API Key
               </label>
               <div className="flex items-center gap-sm">
                 <div className="flex-1 px-md py-sm bg-surface-container border border-border-subtle rounded font-meta-mono text-sm text-text-secondary">
-                  buiry_prod_••••••••••••••••••••••••
+                  {apiKey ? `${apiKey.slice(0, 12)}••••••••` : "Not configured"}
                 </div>
-                <button className="px-sm py-sm bg-surface-container border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
-                  <span className="material-icons-round text-[16px]">content_copy</span>
-                </button>
-                <button className="px-sm py-sm bg-surface-container border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
-                  <span className="material-icons-round text-[16px]">refresh</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-sm">
-              <label className="text-text-secondary font-meta-mono text-[10px] uppercase">
-                Sandbox Testing Key
-              </label>
-              <div className="flex items-center gap-sm">
-                <div className="flex-1 px-md py-sm bg-surface-container border border-border-subtle rounded font-meta-mono text-sm text-text-secondary">
-                  buiry_sbx_••••••••••••••••••••••••
-                </div>
-                <button className="px-sm py-sm bg-surface-container border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
-                  <span className="material-icons-round text-[16px]">content_copy</span>
-                </button>
+                {apiKey && (
+                  <button className="px-sm py-sm bg-surface-container border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
+                    <span className="material-icons-round text-[16px]">content_copy</span>
+                  </button>
+                )}
               </div>
             </div>
           </section>
@@ -133,6 +120,7 @@ export default function Settings() {
                 type="text"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
+                placeholder="e.g. api.example.com"
                 className="w-full px-md py-sm bg-surface-container border border-border-subtle rounded text-text-primary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors"
               />
             </div>
@@ -190,7 +178,7 @@ export default function Settings() {
         </div>
 
         {/* ── Right Column (4 cols) ─────────────────────────────────── */}
-        <div className="col-span-4 space-y-lg">
+        <div className="col-span-12 md:col-span-4 space-y-lg">
           {/* Current Plan */}
           <section className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden">
             <div className="bg-primary p-md">
@@ -198,34 +186,34 @@ export default function Settings() {
                 Current Plan
               </p>
               <p className="text-headline-lg font-headline-lg font-bold text-on-primary mt-xs">
-                $49/mo
+                Free Tier
               </p>
               <p className="text-on-primary/80 text-sm font-body-base">
-                Professional Tier
+                Community
               </p>
             </div>
             <div className="p-md space-y-md">
               <div className="space-y-xs">
                 <div className="flex justify-between text-[11px] font-meta-mono text-text-secondary">
                   <span>Agent Instances</span>
-                  <span className="text-text-primary">18/50</span>
+                  <span className="text-text-primary">0/5</span>
                 </div>
                 <div className="h-2 w-full bg-border-subtle rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
-                    style={{ width: "36%" }}
+                    style={{ width: "0%" }}
                   />
                 </div>
               </div>
               <div className="space-y-xs">
                 <div className="flex justify-between text-[11px] font-meta-mono text-text-secondary">
                   <span>API Requests</span>
-                  <span className="text-text-primary">824k/1M</span>
+                  <span className="text-text-primary">0/10k</span>
                 </div>
                 <div className="h-2 w-full bg-border-subtle rounded-full overflow-hidden">
                   <div
                     className="h-full bg-tertiary rounded-full"
-                    style={{ width: "82.4%" }}
+                    style={{ width: "0%" }}
                   />
                 </div>
               </div>
@@ -284,7 +272,7 @@ export default function Settings() {
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────── */}
-      <div className="flex justify-between pt-md border-t border-border-subtle">
+      <div className="flex flex-col sm:flex-row justify-between gap-sm pt-md border-t border-border-subtle">
         <button className="px-md py-sm border border-border-subtle text-text-secondary font-body-base text-sm rounded hover:bg-surface-elevated transition-colors">
           Discard Changes
         </button>

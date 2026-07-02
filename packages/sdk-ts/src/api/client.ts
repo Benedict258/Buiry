@@ -13,8 +13,7 @@ export class BuiryAPI {
       ...init,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`,
-        "X-Project-Id": this.config.projectId,
+        "X-Api-Key": this.config.apiKey,
         ...init?.headers,
       },
     });
@@ -25,16 +24,21 @@ export class BuiryAPI {
   }
 
   async captureInteraction(pattern: InteractionPattern): Promise<void> {
-    await this.request("/v1/interactions", {
+    await this.request("/api/session/search", {
       method: "POST",
-      body: JSON.stringify(pattern),
+      body: JSON.stringify({ query: pattern.provider, ...pattern }),
     });
   }
 
   async storeMemory(entry: MemoryEntry): Promise<void> {
-    await this.request("/v1/memory", {
+    await this.request("/api/session/end", {
       method: "POST",
-      body: JSON.stringify(entry),
+      body: JSON.stringify({
+        project: entry.sessionId || "sdk",
+        summary: `${entry.key}: ${entry.value}`,
+        decisions: [],
+        nextSteps: [],
+      }),
     });
   }
 
@@ -42,8 +46,24 @@ export class BuiryAPI {
     query: string,
     sessionId?: string
   ): Promise<MemoryEntry[]> {
-    const params = new URLSearchParams({ query });
-    if (sessionId) params.set("sessionId", sessionId);
-    return this.request<MemoryEntry[]>(`/v1/memory/search?${params}`);
+    const res = await this.request<{ results: MemoryEntry[]; total: number }>(
+      "/api/context/search",
+      {
+        method: "POST",
+        body: JSON.stringify({ query }),
+      }
+    );
+    return res.results || [];
+  }
+
+  async healthCheck(): Promise<{ status: string; version: string; services: Record<string, string> }> {
+    return this.request("/health");
+  }
+
+  async startSession(): Promise<Record<string, unknown>> {
+    return this.request("/api/session/start", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
   }
 }

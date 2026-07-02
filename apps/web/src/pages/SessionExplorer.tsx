@@ -1,26 +1,7 @@
-/**
- * SessionExplorer — Timeline view of all coding sessions with filtering.
- *
- * This page shows every session in a vertical timeline with:
- *   - Filter bar: Search by text, agent type, and development phase
- *   - Timeline: Sessions grouped by day (Today, Yesterday, older)
- *   - Session cards: Expandable cards with summary, agent, phase, and token counts
- *
- * Design choices:
- *   - Timeline layout: Visual metaphor for chronological session history
- *   - Sticky filter bar: Stays visible while scrolling through sessions
- *   - Expandable cards: Show summary by default, full details on click
- *   - Token counts: Estimated from changes_made count (heuristic for demo)
- *
- * The mapSession() function transforms raw SessionObject data into a UI-friendly
- * shape, similar to sessionToDetail() in SessionDetailModal.
- */
-
 import { useEffect, useState } from "react";
 import { getSessions } from "../lib/api";
 import type { SessionObject } from "../lib/types";
 
-/** UI-friendly session data shape for the timeline cards */
 interface SessionCardData {
   id: string;
   agent: string;
@@ -34,37 +15,20 @@ interface SessionCardData {
   outputTokens: string;
 }
 
-/**
- * Transform a raw SessionObject into the UI-friendly SessionCardData.
- *
- * Key transformations:
- *   - Derives relative date label (today/yesterday/Nd ago) from timestamp
- *   - Normalizes agent name to a key (claude/cursor/copilot) for color mapping
- *   - Infers status from session notes (active/completed/archived)
- *   - Estimates token counts from changes_made count (heuristic)
- *
- * @param s - Raw SessionObject from Build-Context-Memory.json
- * @returns SessionCardData for timeline card rendering
- */
 function mapSession(s: SessionObject): SessionCardData {
   const ts = new Date(s.timestamp);
   const now = new Date();
   const diffMs = now.getTime() - ts.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  // Relative date label for grouping sessions in the timeline
   const dateLabel = diffDays === 0 ? "today" : diffDays === 1 ? "yesterday" : `${diffDays}d ago`;
 
-  // Normalize agent name to a key for color mapping.
-  // Default to "copilot" for unknown agents.
   const agentKey = s.ai_agent.toLowerCase().includes("claude")
     ? "claude"
     : s.ai_agent.toLowerCase().includes("cursor")
       ? "cursor"
       : "copilot";
 
-  // Infer status from session notes — this is a heuristic for the demo.
-  // Production would have an explicit status field in the session object.
   const status =
     s.notes?.toLowerCase().includes("active") || s.notes?.toLowerCase().includes("active session")
       ? "ACTIVE"
@@ -72,8 +36,6 @@ function mapSession(s: SessionObject): SessionCardData {
         ? "COMPLETED"
         : "ARCHIVED";
 
-  // Estimate token counts from changes_made count.
-  // These multipliers are rough averages for coding sessions.
   const inputTokens = `${(s.changes_made.length * 3.2 + 8).toFixed(1)}k`;
   const outputTokens = `${(s.changes_made.length * 1.1 + 1.2).toFixed(1)}k`;
 
@@ -91,16 +53,12 @@ function mapSession(s: SessionObject): SessionCardData {
   };
 }
 
-// Agent badge colors — each agent type gets a distinct color for quick identification.
-// This mapping is used in the session card to show which AI agent ran the session.
 const agentColors: Record<string, string> = {
   claude: "bg-tertiary/20 text-tertiary border border-tertiary/30",
   cursor: "bg-primary/20 text-primary border border-primary/30",
   copilot: "bg-secondary/20 text-secondary border border-secondary/30",
 };
 
-// Phase badge colors — development phases get distinct colors for visual filtering.
-// Users can scan the timeline and identify phase patterns at a glance.
 const phaseColors: Record<string, string> = {
   Optimization: "bg-tertiary/20 text-tertiary border border-tertiary/30",
   Debugging: "bg-primary/20 text-primary border border-primary/30",
@@ -108,8 +66,6 @@ const phaseColors: Record<string, string> = {
   Refactoring: "bg-primary/20 text-primary border border-primary/30",
 };
 
-// Status styles — ACTIVE gets a pulsing green dot, others are muted.
-// The pulse animation draws attention to active sessions in the timeline.
 const statusStyles: Record<string, { dot: string; badge: string }> = {
   ACTIVE: {
     dot: "bg-status-success animate-pulse",
@@ -125,6 +81,22 @@ const statusStyles: Record<string, { dot: string; badge: string }> = {
   },
 };
 
+function formatDateHeader(dateLabel: string): string {
+  if (dateLabel === "today") {
+    const d = new Date();
+    return `Today, ${d.getDate()} ${d.toLocaleString("en", { month: "short" })}`;
+  }
+  if (dateLabel === "yesterday") {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `Yesterday, ${d.getDate()} ${d.toLocaleString("en", { month: "short" })}`;
+  }
+  const daysAgo = parseInt(dateLabel);
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return `${d.getDate()} ${d.toLocaleString("en", { month: "short" })}`;
+}
+
 export default function SessionExplorer() {
   const [sessions, setSessions] = useState<SessionCardData[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -132,12 +104,10 @@ export default function SessionExplorer() {
   const [agentFilter, setAgentFilter] = useState("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
 
-  // Fetch sessions on mount and transform them to UI-friendly shape
   useEffect(() => {
     getSessions().then((raw) => setSessions(raw.map(mapSession)));
   }, []);
 
-  // Load Material Icons Round on demand for this page
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -149,13 +119,10 @@ export default function SessionExplorer() {
     };
   }, []);
 
-  // Toggle card expansion — clicking an expanded card collapses it
   const toggleExpand = (id: string) => {
     setExpanded((prev) => (prev === id ? null : id));
   };
 
-  // Multi-filter logic: all filters must pass (AND logic).
-  // Search is case-insensitive and matches against summary, phase, and agent name.
   const filteredSessions = sessions.filter(
     (s) =>
       (agentFilter === "all" || s.agentKey === agentFilter) &&
@@ -166,9 +133,17 @@ export default function SessionExplorer() {
         s.agent.toLowerCase().includes(search.toLowerCase()))
   );
 
-  // Group sessions by day for the timeline sections
   const todaySessions = filteredSessions.filter((s) => s.date === "today");
   const yesterdaySessions = filteredSessions.filter((s) => s.date === "yesterday");
+  const olderSessions = filteredSessions.filter(
+    (s) => s.date !== "today" && s.date !== "yesterday"
+  );
+
+  const olderGroups = olderSessions.reduce<Record<string, SessionCardData[]>>((acc, s) => {
+    if (!acc[s.date]) acc[s.date] = [];
+    acc[s.date].push(s);
+    return acc;
+  }, {});
 
   return (
     <div className="p-lg max-w-[1200px] mx-auto space-y-lg">
@@ -210,7 +185,7 @@ export default function SessionExplorer() {
           <select
             value={agentFilter}
             onChange={(e) => setAgentFilter(e.target.value)}
-            className="px-md py-sm bg-surface-card border border-border-subtle rounded text-text-secondary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+            className="hidden sm:block px-md py-sm bg-surface-card border border-border-subtle rounded text-text-secondary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
           >
             <option value="all">All Agents</option>
             <option value="claude">Claude Code</option>
@@ -220,7 +195,7 @@ export default function SessionExplorer() {
           <select
             value={phaseFilter}
             onChange={(e) => setPhaseFilter(e.target.value)}
-            className="px-md py-sm bg-surface-card border border-border-subtle rounded text-text-secondary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+            className="hidden sm:block px-md py-sm bg-surface-card border border-border-subtle rounded text-text-secondary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
           >
             <option value="all">All Phases</option>
             <option value="optimization">Optimization</option>
@@ -235,66 +210,101 @@ export default function SessionExplorer() {
       </div>
 
       {/* ── Timeline ────────────────────────────────────────────────── */}
-      <div className="relative">
-        {/* vertical stem */}
-        <div className="absolute left-[16px] top-0 bottom-0 w-px bg-border-subtle z-0" />
-
-        {/* Today */}
-        <div className="relative z-10 mb-lg">
-          <div className="flex items-center gap-sm mb-md pl-xl">
-            <span className="material-icons-round text-text-secondary text-[16px]">
-              calendar_today
-            </span>
-            <h2 className="text-section-header font-section-header font-semibold text-text-primary text-sm">
-              Today, 24 Oct
-            </h2>
-          </div>
-
-          <div className="space-y-md pl-xl">
-            {todaySessions.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                expanded={expanded === session.id}
-                onToggle={() => toggleExpand(session.id)}
-              />
-            ))}
-            {todaySessions.length === 0 && (
-              <p className="text-text-secondary font-meta-mono text-xs py-md">
-                No sessions match filters.
-              </p>
-            )}
-          </div>
+      {sessions.length === 0 ? (
+        <div className="bg-surface-card border border-border-subtle rounded-lg p-xl flex flex-col items-center justify-center py-2xl">
+          <span className="material-icons-round text-text-secondary text-[48px] mb-md">
+            history
+          </span>
+          <p className="text-headline-sm font-headline-sm font-semibold text-text-primary mb-xs">
+            No sessions yet
+          </p>
+          <p className="text-text-secondary text-sm font-body-base">
+            Start a coding session to see it appear here.
+          </p>
         </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-[16px] top-0 bottom-0 w-px bg-border-subtle z-0" />
 
-        {/* Yesterday */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-sm mb-md pl-xl">
-            <span className="material-icons-round text-text-secondary text-[16px]">
-              calendar_today
-            </span>
-            <h2 className="text-section-header font-section-header font-semibold text-text-primary text-sm">
-              Yesterday, 23 Oct
-            </h2>
+          {/* Today */}
+          <div className="relative z-10 mb-lg">
+            <div className="flex items-center gap-sm mb-md pl-xl">
+              <span className="material-icons-round text-text-secondary text-[16px]">
+                calendar_today
+              </span>
+              <h2 className="text-section-header font-section-header font-semibold text-text-primary text-sm">
+                {formatDateHeader("today")}
+              </h2>
+            </div>
+            <div className="space-y-md pl-xl">
+              {todaySessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  expanded={expanded === session.id}
+                  onToggle={() => toggleExpand(session.id)}
+                />
+              ))}
+              {todaySessions.length === 0 && (
+                <p className="text-text-secondary font-meta-mono text-xs py-md">
+                  No sessions match filters.
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-md pl-xl">
-            {yesterdaySessions.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                expanded={expanded === session.id}
-                onToggle={() => toggleExpand(session.id)}
-              />
-            ))}
-            {yesterdaySessions.length === 0 && (
-              <p className="text-text-secondary font-meta-mono text-xs py-md">
-                No sessions match filters.
-              </p>
-            )}
+          {/* Yesterday */}
+          <div className="relative z-10 mb-lg">
+            <div className="flex items-center gap-sm mb-md pl-xl">
+              <span className="material-icons-round text-text-secondary text-[16px]">
+                calendar_today
+              </span>
+              <h2 className="text-section-header font-section-header font-semibold text-text-primary text-sm">
+                {formatDateHeader("yesterday")}
+              </h2>
+            </div>
+            <div className="space-y-md pl-xl">
+              {yesterdaySessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  expanded={expanded === session.id}
+                  onToggle={() => toggleExpand(session.id)}
+                />
+              ))}
+              {yesterdaySessions.length === 0 && (
+                <p className="text-text-secondary font-meta-mono text-xs py-md">
+                  No sessions match filters.
+                </p>
+              )}
+            </div>
           </div>
+
+          {/* Older sessions grouped by day */}
+          {Object.entries(olderGroups).map(([date, group]) => (
+            <div key={date} className="relative z-10 mb-lg">
+              <div className="flex items-center gap-sm mb-md pl-xl">
+                <span className="material-icons-round text-text-secondary text-[16px]">
+                  calendar_today
+                </span>
+                <h2 className="text-section-header font-section-header font-semibold text-text-primary text-sm">
+                  {formatDateHeader(date)}
+                </h2>
+              </div>
+              <div className="space-y-md pl-xl">
+                {group.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    expanded={expanded === session.id}
+                    onToggle={() => toggleExpand(session.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
 
       {/* ── Load More ────────────────────────────────────────────────── */}
       <div className="flex justify-center pt-md">
@@ -307,19 +317,6 @@ export default function SessionExplorer() {
   );
 }
 
-/**
- * SessionCard — Individual session entry in the timeline.
- *
- * Shows a compact summary by default (agent, phase, status, timestamp).
- * Expands on click to reveal full details (session ID, instance, status, summary).
- *
- * Design choices:
- *   - Connector dot on the left links cards to the timeline stem
- *   - Status dot pulses for ACTIVE sessions to draw attention
- *   - Footer shows token counts (input/output) for cost tracking
- *   - "VIEW_FULL_STREAM" vs "VIEW_SNAPSHOT" button changes based on status
- *   - e.stopPropagation() on the footer button prevents card toggle on click
- */
 function SessionCard({
   session,
   expanded,
@@ -329,11 +326,10 @@ function SessionCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const st = statusStyles[session.status];
+  const st = statusStyles[session.status] ?? statusStyles.ARCHIVED;
 
   return (
     <div className="relative">
-      {/* connector dot */}
       <div
         className={`absolute left-[-24px] top-6 w-2 h-2 rounded-full z-20 ${st.dot}`}
       />
@@ -344,9 +340,8 @@ function SessionCard({
         }`}
         onClick={onToggle}
       >
-        {/* header row */}
         <div className="px-md py-sm flex items-center justify-between">
-          <div className="flex items-center gap-sm">
+        <div className="flex flex-wrap items-center gap-sm">
             <span className="font-technical-id text-xs text-primary font-medium bg-primary/10 px-xs py-[2px] rounded">
               #{session.id}
             </span>
@@ -359,14 +354,13 @@ function SessionCard({
           </span>
         </div>
 
-        {/* summary grid */}
-        <div className="px-md pb-sm grid grid-cols-4 gap-sm text-[11px]">
+        <div className="px-md pb-sm grid grid-cols-2 md:grid-cols-4 gap-sm text-[11px]">
           <div>
             <span className="text-text-secondary font-meta-mono uppercase block mb-[2px]">
               Agent
             </span>
             <span
-              className={`inline-block px-xs py-[2px] rounded font-meta-mono text-[10px] ${agentColors[session.agentKey]}`}
+              className={`inline-block px-xs py-[2px] rounded font-meta-mono text-[10px] ${agentColors[session.agentKey] ?? ""}`}
             >
               {session.agent}
             </span>
@@ -376,7 +370,7 @@ function SessionCard({
               Phase
             </span>
             <span
-              className={`inline-block px-xs py-[2px] rounded font-meta-mono text-[10px] ${phaseColors[session.phase]}`}
+              className={`inline-block px-xs py-[2px] rounded font-meta-mono text-[10px] ${phaseColors[session.phase] ?? ""}`}
             >
               {session.phase}
             </span>
@@ -391,7 +385,6 @@ function SessionCard({
           </div>
         </div>
 
-        {/* footer */}
         <div className="px-md py-sm bg-surface-container-lowest border-t border-border-subtle flex items-center justify-between">
           <div className="flex items-center gap-md font-meta-mono text-[10px] text-text-secondary">
             <span>
@@ -409,7 +402,6 @@ function SessionCard({
           </button>
         </div>
 
-        {/* expanded detail */}
         {expanded && (
           <div className="px-md py-md border-t border-border-subtle bg-surface-container space-y-sm">
             <div className="grid grid-cols-2 gap-sm text-[11px]">

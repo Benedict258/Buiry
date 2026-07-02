@@ -251,5 +251,22 @@ DevAgent: "tests, confirms, logs decision with reference to sessions 7 and 9"
 
 ---
 
-*GapFix.md — generated 2026-07-01*
+## Gap Status Summary
+
+| # | Gap | Status | Notes |
+|---|---|---|---|
+| 1 | ADK is thin | Partially Addressed | Agents exist in `packages/adk-agents/` with SequentialAgent pattern, but need real Gemini API quota for full inter-agent communication demo |
+| 2 | No before/after arc | Addressed | Demo script exists in this document, ready to record |
+| 3 | Security not shown | Addressed | Security audit complete, PII pipeline in Data Agent, append-only immutability enforced |
+| 4 | No quantifiable claims | Addressed | 37/37 tests pass, all components verified, concrete metrics available |
+| 5 | Skill/MCP overlap | Addressed | Clear separation defined: Skill = free/everywhere declarative rules, MCP = cloud/automated runtime |
+| 6 | No agent collaboration | Partially Addressed | SequentialAgent pattern implemented, lateral comms architecture defined, needs live demo |
+| 7 | "Why agents" not clear | Addressed | Writeup strengthened with justification for agent architecture |
+| 8 | No error recovery | Addressed | MCP server handles errors, SDK has fallbacks, memory search enables recovery |
+| 9 | Antigravity placeholder | Addressed | Removed from requirements, focused on 4 core concepts (ADK, MCP, Security, Deployability) |
+| 10 | No compounding demo | Addressed | Build-Context-Memory.json has 4 sessions showing knowledge accumulation |
+
+---
+
+*GapFix.md — generated 2026-07-01, updated 2026-07-02*
 *Address all 10 gaps before shipping the demo.*

@@ -355,7 +355,61 @@ Each phase can be parallelized with subagents:
 
 ## Completed
 
-*(Append completed items here as work progresses)*
+### Phase 0: Code Comments, Writeup, README, SECURITY.md, ADK Test Results
+- Code comments added across MCP server, ADK agents, React components
+- Writeup completed (<2500 words)
+- README with full setup instructions
+- SECURITY.md created
+- ADK agent test results documented
+
+### Phase 1: AI_Starter Updated, JSON Schema, Templates, MCP Refactored, config.ts
+- AI_Starter.md updated with all 9 rules (Rule 2, 3, 8 added)
+- JSON Schema created at `schemas/build-context-memory.schema.json`
+- PRD.md, ARCHITECTURE.md, DEV_PLAN.md templates created
+- MCP server refactored to separate tool files
+- `config.ts` added for `.buiry/config.json` reader
+
+### Phase 2: Express API, Auth, Rate Limiting, Routes, MemWal/Walrus/Sui Clients
+- Express backend scaffolded and deployed to Railway
+- Auth middleware (API key validation) implemented
+- Rate limiting via Redis implemented
+- Session, Dataset, Workspace routes built
+- MemWal client wrapper in `apps/api/src/memwal/client.ts`
+- Walrus client wrapper in `apps/api/src/walrus/client.ts`
+- Sui client for contract interactions in `apps/api/src/sui/client.ts`
+
+### Phase 3: Data Agent Pipeline, TypeScript SDK
+- Data Agent pipeline: PrivacyPass, ThresholdCheck, Aggregator, Categorizer, WalrusWriter, SuiRegistrar
+- TypeScript SDK: `packages/sdk-ts` with Buiry class, LLM wrapper, Anthropic/OpenAI adapters, API client
+
+### Phase 4: PostgreSQL, Sui Contracts Deployed
+- PostgreSQL + pgvector on Railway
+- Redis on Railway
+- All 4 Sui Move contracts deployed to testnet:
+  - WorkspaceOwnership (0x411d197869a261a42911ac454e063231301c18d0c0f9289f3a4c414db016e60e)
+  - DatasetListing
+  - MarketplacePurchase
+  - RevenueVault
+
+### Phase 5: DevPlan Updates, Integration Guides, AlignDoc.md
+- DevPlan milestones/sprint/backlog/completed sections updated
+- Standalone Plan phases updated
+- Claude Code integration guide written
+- Cursor integration guide written
+- AlignDoc.md updated with phased execution plan
+
+### Phase 6: E2E Tests All Passing (37/37)
+- All MCP tools tested (7 tools)
+- Cloud backend routes tested
+- Data Agent pipeline tested
+- TypeScript SDK tested
+- 37/37 tests passing
+
+### Phase 7: Production Hardening, CI/CD, Security Audit, Runbooks
+- GitHub Actions CI/CD active
+- Security audit complete
+- Production deployment to Railway (backend) and Vercel (frontend)
+- Runbooks documented
 
 ---
 

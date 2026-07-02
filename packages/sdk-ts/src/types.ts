@@ -3,7 +3,7 @@ import { z } from "zod";
 export const BuiryConfigSchema = z.object({
   apiKey: z.string(),
   projectId: z.string(),
-  domain: z.string().default("https://api.buiry.ai"),
+  domain: z.string().default("https://buiry.up.railway.app"),
   capture: z.boolean().default(true),
   sampleRate: z.number().min(0).max(1).default(1),
 });

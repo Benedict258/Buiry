@@ -1,54 +1,39 @@
-/**
- * Dashboard — Project overview and active session summary.
- *
- * This is the landing page that shows:
- *   - Hero banner: Active session with summary and quick actions
- *   - Stats grid: Current phase, open issues, active agents
- *   - Activity chart: Session frequency over the last 7 days
- *   - Recent decisions: Latest architectural choices with tags
- *
- * Design choices:
- *   - Data is fetched from getMemory() which reads Build-Context-Memory.json
- *     via the MCP server. The dashboard reflects the real project state.
- *   - The hero banner prioritizes the active session because that's what
- *     users care about most — "what's happening right now?"
- *   - Recent decisions are tagged (SECURITY, CODE-REVIEW, PERFORMANCE) to
- *     help users quickly identify the type of decision at a glance.
- */
-
 import { useEffect, useState } from "react";
 import { getMemory } from "../lib/api";
 import type { BuildContextMemory } from "../lib/types";
 
-// Mock chart data for the hackathon demo.
-// Production would derive this from session timestamps in memory.
-const chartBars = [
-  { height: "45%", label: "Mon" },
-  { height: "70%", label: "Tue" },
-  { height: "30%", label: "Wed" },
-  { height: "55%", label: "Thu" },
-  { height: "85%", highlighted: true, label: "Fri" },
-  { height: "40%", label: "Sat" },
-  { height: "60%", label: "Sun" },
-];
-
-// Tag colors follow the design system's semantic color tokens.
-// Each tag type has a distinct color for quick visual identification.
 const tagColors: Record<string, string> = {
   SECURITY: "bg-status-error/20 text-status-error border border-status-error/30",
   "CODE-REVIEW": "bg-primary/20 text-primary border border-primary/30",
   PERFORMANCE: "bg-tertiary/20 text-tertiary border border-tertiary/30",
 };
 
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function deriveActivityChart(sessions: BuildContextMemory["sessions"]) {
+  const dayCounts = new Array(7).fill(0);
+  for (const s of sessions) {
+    const d = new Date(s.timestamp).getDay();
+    const idx = d === 0 ? 6 : d - 1;
+    dayCounts[idx]++;
+  }
+  const max = Math.max(...dayCounts, 1);
+  const todayIdx = new Date().getDay();
+  const todayMapped = todayIdx === 0 ? 6 : todayIdx - 1;
+  return DAYS.map((label, i) => ({
+    height: `${Math.round((dayCounts[i] / max) * 100) || 0}%`,
+    label,
+    highlighted: i === todayMapped,
+  }));
+}
+
 export default function Dashboard() {
   const [memory, setMemory] = useState<BuildContextMemory | null>(null);
 
-  // Fetch memory on mount — this populates all dashboard sections
   useEffect(() => {
     getMemory().then(setMemory);
   }, []);
 
-  // Load Material Icons Round on demand for this page only
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -60,24 +45,18 @@ export default function Dashboard() {
     };
   }, []);
 
-  // The most recent session is the "active" one — shown in the hero banner
   const activeSession = memory?.sessions[0];
   const summary = memory?.summary;
 
-  // Derive recent decisions from all sessions, tagged by phase type.
-  // This flattening + tagging pattern turns structured session data into
-  // a flat list of displayable decision cards.
   const recentDecisions = memory?.sessions
     .flatMap((s) =>
       s.decisions_log.map((d) => ({
-        id: `#${s.session_id.split('_')[1]}`,
+        id: `#${s.session_id.split("_")[1]}`,
         title: d.decision,
         time: new Date(s.timestamp).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        // Tag inference: match phase or decision content to tag categories.
-        // This is a heuristic — production would use a proper tagging system.
         tag: s.current_phase.toUpperCase().includes("OPTIM")
           ? "PERFORMANCE"
           : s.current_phase.toUpperCase().includes("SECUR") ||
@@ -88,20 +67,24 @@ export default function Dashboard() {
     )
     .slice(0, 3) ?? [];
 
+  const chartBars = deriveActivityChart(memory?.sessions ?? []);
+
+  const uniqueAgents = [...new Set((memory?.sessions ?? []).map((s) => s.ai_agent))];
+
+  const allIssues = (memory?.sessions ?? []).flatMap((s) => s.known_issues);
+  const highPrio = allIssues.filter((i) => i.severity === "high").length;
+  const lowPrio = allIssues.filter((i) => i.severity === "low").length;
+
   return (
     <div className="p-lg space-y-lg max-w-[1200px] mx-auto">
-      {/* ── Hero Banner ─────────────────────────────────────────────
-          Shows the active session with summary and quick actions.
-          The left side has session info, the right side has performance stats.
-          This is the "hero" because it's the most important information on the page. */}
+      {/* ── Hero Banner ───────────────────────────────────────────── */}
       <section className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden">
-        <div className="flex">
-          {/* left */}
+        <div className="flex flex-col md:flex-row">
           <div className="flex-1 p-lg flex flex-col justify-between">
             <div className="space-y-xs">
               <div className="flex items-center gap-sm">
                 <span className="inline-flex items-center gap-xs px-xs py-[2px] bg-status-success/20 text-status-success border border-status-success/30 rounded text-[10px] font-meta-mono uppercase tracking-wider">
-                  ● Active Session
+                  {activeSession ? "● Active Session" : "○ No Sessions"}
                 </span>
                 <span className="text-text-secondary font-meta-mono text-[10px] uppercase">
                   {activeSession
@@ -114,12 +97,13 @@ export default function Dashboard() {
               </div>
 
               <h1 className="text-headline-lg font-headline-lg font-bold text-text-primary mt-sm">
-                Session #{activeSession?.session_id.split("_")[1] ?? "—"}:{" "}
-                {activeSession?.ai_agent ?? "—"}
+                {activeSession
+                  ? `Session #${activeSession.session_id.split("_")[1]}: ${activeSession.ai_agent}`
+                  : "No Active Session"}
               </h1>
 
               <p className="text-text-secondary text-body-base max-w-[480px]">
-                {activeSession?.last_session_summary ?? "No active session."}
+                {activeSession?.last_session_summary ?? "No data available. Start a session to see activity here."}
               </p>
             </div>
 
@@ -137,44 +121,39 @@ export default function Dashboard() {
           </div>
 
           {/* right stats panel */}
-          <div className="w-1/3 border-l border-border-subtle bg-surface-container p-lg grid grid-cols-2 gap-md content-center">
+          <div className="w-full md:w-1/3 border-l border-border-subtle bg-surface-container p-lg grid grid-cols-2 gap-md content-center">
             <div>
               <p className="text-text-secondary font-meta-mono text-[10px] uppercase">
-                Uptime
+                Total Sessions
               </p>
               <p className="text-headline-lg font-bold text-text-primary">
-                99.98%
+                {summary?.total_sessions ?? 0}
               </p>
             </div>
             <div>
               <p className="text-text-secondary font-meta-mono text-[10px] uppercase">
-                Tokens / sec
+                Status
               </p>
-              <p className="text-headline-lg font-bold text-text-primary">
-                1.2k
+              <p className="text-headline-lg font-bold text-text-primary capitalize">
+                {summary?.overall_status ?? "N/A"}
               </p>
             </div>
             <div className="col-span-2">
               <p className="text-text-secondary font-meta-mono text-[10px] uppercase">
-                Latency
+                Last Updated
               </p>
               <p className="text-headline-lg font-bold text-text-primary">
-                42ms
+                {summary?.last_updated
+                  ? new Date(summary.last_updated).toLocaleDateString()
+                  : "N/A"}
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Stats Grid ──────────────────────────────────────────────
-          Three-column grid showing key project metrics at a glance.
-          Each card has a label, value, and supplementary detail (progress bar,
-          priority badges, agent avatars). This layout scales well to more cards
-          if needed. */}
-      <section className="grid grid-cols-3 gap-md">
-        {/* Current Phase — shows which development phase the project is in
-            and a progress bar for visual feedback on completion. */}
-
+      {/* ── Stats Grid ────────────────────────────────────────────── */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
         <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
           <div className="flex justify-between items-center">
             <span className="font-section-header text-sm font-semibold text-text-primary">
@@ -189,22 +168,8 @@ export default function Dashboard() {
               {summary?.current_phase ?? "—"}
             </p>
           </div>
-          <div className="space-y-xs">
-            <div className="flex justify-between text-[11px] font-meta-mono text-text-secondary">
-              <span>Progress</span>
-              <span>65%</span>
-            </div>
-            <div className="h-2 w-full bg-border-subtle rounded-full overflow-hidden">
-              <div
-                className="h-full bg-tertiary rounded-full transition-all"
-                style={{ width: "65%" }}
-              />
-            </div>
-          </div>
         </div>
 
-        {/* Open Issues — count of unresolved problems with priority badges.
-            Priority is inferred from issue content (heuristic for demo). */}
         <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
           <div className="flex justify-between items-center">
             <span className="font-section-header text-sm font-semibold text-text-primary">
@@ -220,17 +185,22 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-sm flex-wrap">
-            <span className="inline-flex items-center gap-xs px-xs py-[2px] bg-status-error/20 text-status-error border border-status-error/30 rounded text-[10px] font-meta-mono">
-              ● 2 HIGH PRIO
-            </span>
-            <span className="inline-flex items-center gap-xs px-xs py-[2px] bg-surface-variant text-text-secondary rounded text-[10px] font-meta-mono">
-              ● 1 LOW PRIO
-            </span>
+            {highPrio > 0 && (
+              <span className="inline-flex items-center gap-xs px-xs py-[2px] bg-status-error/20 text-status-error border border-status-error/30 rounded text-[10px] font-meta-mono">
+                ● {highPrio} HIGH PRIO
+              </span>
+            )}
+            {lowPrio > 0 && (
+              <span className="inline-flex items-center gap-xs px-xs py-[2px] bg-surface-variant text-text-secondary rounded text-[10px] font-meta-mono">
+                ● {lowPrio} LOW PRIO
+              </span>
+            )}
+            {highPrio === 0 && lowPrio === 0 && (
+              <span className="text-text-secondary font-meta-mono text-[10px]">No issues</span>
+            )}
           </div>
         </div>
 
-        {/* Active Agents — shows connected AI agents with status indicators.
-            The avatar stack and agent list provide both visual and detailed views. */}
         <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
           <div className="flex justify-between items-center">
             <span className="font-section-header text-sm font-semibold text-text-primary">
@@ -242,52 +212,42 @@ export default function Dashboard() {
               Status
             </p>
             <p className="text-headline-lg font-bold text-text-primary">
-              2 connected
+              {uniqueAgents.length} connected
             </p>
           </div>
           <div className="space-y-sm">
-            {/* avatar stack */}
             <div className="flex items-center gap-xs">
-              <div className="w-7 h-7 rounded-full bg-primary/30 border border-primary/50 flex items-center justify-center text-[10px] font-meta-mono text-primary font-bold">
-                W
-              </div>
-              <div className="w-7 h-7 rounded-full bg-secondary/30 border border-secondary/50 flex items-center justify-center text-[10px] font-meta-mono text-secondary font-bold">
-                C
-              </div>
-              <div className="w-7 h-7 rounded-full border border-dashed border-border-subtle flex items-center justify-center text-text-secondary text-xs hover:bg-surface-elevated cursor-pointer transition-colors">
-                +
-              </div>
+              {uniqueAgents.slice(0, 3).map((agent, i) => {
+                const colors = ["bg-primary/30 border-primary/50 text-primary", "bg-secondary/30 border-secondary/50 text-secondary", "bg-tertiary/30 border-tertiary/50 text-tertiary"];
+                return (
+                  <div key={agent} className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-meta-mono font-bold ${colors[i % colors.length]}`}>
+                    {agent[0]}
+                  </div>
+                );
+              })}
             </div>
-            {/* agent list */}
             <div className="space-y-xs text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="font-meta-mono text-text-primary">
-                  worker-alpha-01
-                </span>
-                <span className="text-status-success text-[10px] font-meta-mono">
-                  ● online
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-meta-mono text-text-primary">
-                  compiler-node-x
-                </span>
-                <span className="text-status-success text-[10px] font-meta-mono">
-                  ● online
-                </span>
-              </div>
+              {uniqueAgents.map((agent) => (
+                <div key={agent} className="flex items-center justify-between">
+                  <span className="font-meta-mono text-text-primary">
+                    {agent}
+                  </span>
+                  <span className="text-status-success text-[10px] font-meta-mono">
+                    ● online
+                  </span>
+                </div>
+              ))}
+              {uniqueAgents.length === 0 && (
+                <span className="text-text-secondary font-meta-mono text-[10px]">No agents connected</span>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Activity & Decisions ─────────────────────────────────────
-          Two-column layout: activity chart (8 cols) + recent decisions (4 cols).
-          The 8:4 ratio prioritizes the chart while keeping decisions visible. */}
-      <section className="grid grid-cols-12 gap-md">
-        {/* Activity chart — 8 cols. Shows session frequency over the last 7 days.
-            The highlighted bar (Friday) draws attention to the most active day. */}
-        <div className="col-span-8 bg-surface-card border border-border-subtle rounded-lg p-lg">
+      {/* ── Activity & Decisions ───────────────────────────────────── */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-md">
+        <div className="col-span-1 lg:col-span-8 bg-surface-card border border-border-subtle rounded-lg p-lg">
           <div className="flex justify-between items-center mb-lg">
             <span className="font-section-header text-sm font-semibold text-text-primary">
               Session Activity
@@ -297,7 +257,6 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {/* bar chart */}
           <div className="flex items-end gap-sm" style={{ height: "160px" }}>
             {chartBars.map((bar, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-xs">
@@ -315,11 +274,14 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          {(!memory?.sessions || memory.sessions.length === 0) && (
+            <p className="text-text-secondary font-meta-mono text-xs text-center mt-md">
+              No data available
+            </p>
+          )}
         </div>
 
-        {/* Recent Decisions — 4 cols. Shows the latest 3 decisions with tags.
-            Each decision links to its session for full context. */}
-        <div className="col-span-4 bg-surface-card border border-border-subtle rounded-lg p-lg flex flex-col">
+        <div className="col-span-1 lg:col-span-4 bg-surface-card border border-border-subtle rounded-lg p-lg flex flex-col">
           <div className="flex justify-between items-center mb-lg">
             <span className="font-section-header text-sm font-semibold text-text-primary">
               Recent Decisions
@@ -327,6 +289,11 @@ export default function Dashboard() {
           </div>
 
           <div className="flex-1 space-y-md">
+            {recentDecisions.length === 0 && (
+              <p className="text-text-secondary font-meta-mono text-xs">
+                No decisions recorded yet.
+              </p>
+            )}
             {recentDecisions.map((d) => (
               <div
                 key={d.id}

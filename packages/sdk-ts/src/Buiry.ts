@@ -56,4 +56,12 @@ export class Buiry {
   getSessionId(): string {
     return this.sessionId;
   }
+
+  async healthCheck() {
+    return this.api.healthCheck();
+  }
+
+  async startSession() {
+    return this.api.startSession();
+  }
 }

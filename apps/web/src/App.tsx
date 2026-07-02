@@ -20,6 +20,7 @@
  */
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./lib/ThemeContext";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import SessionExplorer from "./pages/SessionExplorer";
@@ -39,26 +40,28 @@ function Documentation() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* All routes share the Layout wrapper (sidebar + topbar) */}
-        <Route element={<Layout />}>
-          {/* Dashboard: project overview, active session, stats grid, activity chart */}
-          <Route path="/" element={<Dashboard />} />
-          {/* SessionExplorer: timeline view of all coding sessions with filters */}
-          <Route path="/sessions" element={<SessionExplorer />} />
-          {/* DatasetBrowser: harvested training datasets from session memory */}
-          <Route path="/datasets" element={<DatasetBrowser />} />
-          {/* Marketplace: future agent/template marketplace (placeholder) */}
-          <Route path="/marketplace" element={<Marketplace />} />
-          {/* Settings: configuration page (placeholder) */}
-          <Route path="/settings" element={<Settings />} />
-          {/* Documentation: project docs (placeholder) */}
-          <Route path="/docs" element={<Documentation />} />
-          {/* Onboarding: first-run experience for new users */}
-          <Route path="/onboarding" element={<Onboarding />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* All routes share the Layout wrapper (sidebar + topbar) */}
+          <Route element={<Layout />}>
+            {/* Dashboard: project overview, active session, stats grid, activity chart */}
+            <Route path="/" element={<Dashboard />} />
+            {/* SessionExplorer: timeline view of all coding sessions with filters */}
+            <Route path="/sessions" element={<SessionExplorer />} />
+            {/* DatasetBrowser: harvested training datasets from session memory */}
+            <Route path="/datasets" element={<DatasetBrowser />} />
+            {/* Marketplace: future agent/template marketplace (placeholder) */}
+            <Route path="/marketplace" element={<Marketplace />} />
+            {/* Settings: configuration page (placeholder) */}
+            <Route path="/settings" element={<Settings />} />
+            {/* Documentation: project docs (placeholder) */}
+            <Route path="/docs" element={<Documentation />} />
+            {/* Onboarding: first-run experience for new users */}
+            <Route path="/onboarding" element={<Onboarding />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

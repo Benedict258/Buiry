@@ -155,7 +155,7 @@ export default function Onboarding() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-md">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
               {features.map((f) => (
                 <div
                   key={f.title}
@@ -265,7 +265,7 @@ export default function Onboarding() {
               Select Intelligence Core
             </h2>
 
-            <div className="grid grid-cols-3 gap-md">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
               {agents.map((agent) => (
                 <button
                   key={agent.id}

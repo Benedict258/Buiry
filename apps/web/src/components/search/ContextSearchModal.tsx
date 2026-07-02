@@ -1,26 +1,6 @@
-/**
- * ContextSearchModal — Cmd+K search overlay for project memory.
- *
- * This is the primary interface for searching across all Buiry session memory.
- * It's modeled after VS Code's command palette and Linear's search — a modal
- * overlay that appears instantly and supports keyboard navigation.
- *
- * Design choices:
- *   - Cmd+K trigger: Industry standard for quick search (VS Code, Linear, Slack)
- *   - Arrow key navigation: Keyboard-first UX for power users
- *   - Match percentages: Show relevance scores to help users pick the best result
- *   - Semantic Match / Vector Search labels: Indicate the search is context-aware
- *   - Mock data: Uses hardcoded results for the hackathon demo; production would
- *     call buiry_get_context MCP tool for real semantic search
- *
- * Keyboard shortcuts:
- *   - Cmd+K or Ctrl+K: Toggle the modal
- *   - Escape: Close the modal
- *   - Arrow Up/Down: Navigate results
- *   - Enter: Open selected result
- */
-
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { searchContext } from "../../lib/api";
+import type { SessionObject } from "../../lib/types";
 
 interface SearchResult {
   id: string;
@@ -34,47 +14,26 @@ interface SearchResult {
   tags: string[];
 }
 
-// Mock search results for the hackathon demo.
-// In production, these would come from the buiry_get_context MCP tool,
-// which searches across all session memory using semantic/vector search.
-const mockResults: SearchResult[] = [
-  {
-    id: "1",
+function sessionToResult(s: SessionObject): SearchResult {
+  const tagColor =
+    s.current_phase.toUpperCase().includes("OPTIM")
+      ? "bg-status-success/10 text-status-success"
+      : s.current_phase.toUpperCase().includes("SECUR")
+        ? "bg-status-warning/10 text-status-warning"
+        : "bg-status-error/10 text-status-error";
+
+  return {
+    id: s.session_id,
     icon: "terminal",
     iconClass: "text-primary",
     iconBg: "bg-primary/10",
-    title: "Performance Analysis: Backend Hook Latency",
-    matchPercent: 92,
-    matchBadgeClass: "bg-status-success/10 text-status-success",
-    content:
-      "Discussion regarding the latency optimization strategies for the primary API gateway. Identified bottleneck in the JSON serialization layer.",
-    tags: ["infrastructure", "optimization"],
-  },
-  {
-    id: "2",
-    icon: "analytics",
-    iconClass: "text-tertiary",
-    iconBg: "bg-tertiary/10",
-    title: "UI/UX Reference Documentation",
-    matchPercent: 87,
-    matchBadgeClass: "bg-status-warning/10 text-status-warning",
-    content:
-      "...the system should prioritize latency optimization in the context search modal...",
-    tags: ["documentation"],
-  },
-  {
-    id: "3",
-    icon: "description",
-    iconClass: "text-text-secondary",
-    iconBg: "bg-surface-variant",
-    title: "Database Schema Migration",
-    matchPercent: 74,
-    matchBadgeClass: "bg-status-error/10 text-status-error",
-    content:
-      "...reviewing the index strategy for the new time-series collection...",
-    tags: ["database"],
-  },
-];
+    title: `${s.ai_agent}: ${s.current_phase}`,
+    matchPercent: 0,
+    matchBadgeClass: tagColor,
+    content: s.last_session_summary,
+    tags: [s.current_phase.toLowerCase()],
+  };
+}
 
 interface ContextSearchModalProps {
   open: boolean;
@@ -82,22 +41,47 @@ interface ContextSearchModalProps {
 }
 
 export default function ContextSearchModal({ open, onClose }: ContextSearchModalProps) {
-  // Pre-populated with a query to show the search experience immediately
-  const [query, setQuery] = useState("latency optimization");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Auto-focus the input when the modal opens for immediate typing
+  const doSearch = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const sessions = await searchContext(q);
+      setResults(sessions.map(sessionToResult));
+    } catch {
+      setResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      if (query.trim()) doSearch(query);
+      else setResults([]);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, open, doSearch]);
+
   useEffect(() => {
     if (open) {
       inputRef.current?.focus();
       setSelectedIndex(0);
+      setQuery("");
+      setResults([]);
     }
   }, [open]);
 
-  // Global Cmd+K handler to toggle the modal.
-  // This runs even when the modal is closed, so Cmd+K can open it.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -111,9 +95,6 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  // Modal-specific keyboard handlers: Escape to close, Arrow keys to navigate.
-  // These are only active when the modal is open to avoid interfering with other
-  // keyboard shortcuts when the modal is closed.
   useEffect(() => {
     if (!open) return;
 
@@ -124,7 +105,7 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
       }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, mockResults.length - 1));
+        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1));
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -133,10 +114,8 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, results.length]);
 
-  // Auto-scroll the selected result into view when navigating with arrow keys.
-  // block: "nearest" prevents unnecessary scrolling when the item is already visible.
   useEffect(() => {
     if (selectedIndex >= 0 && resultsRef.current) {
       const el = resultsRef.current.children[selectedIndex] as HTMLElement | undefined;
@@ -162,7 +141,10 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
             placeholder="Search project memory..."
             className="flex-1 bg-transparent border-none outline-none text-headline-md font-headline-md text-text-primary placeholder:text-outline"
           />
@@ -171,10 +153,6 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
           </kbd>
         </div>
 
-        {/* Filter chips — show active search modes.
-            "Semantic Match" indicates vector-based search (not just keyword).
-            "Last 30 Days" limits the time range for relevance.
-            These labels build trust by showing the user what search capabilities are active. */}
         <div className="flex items-center gap-sm px-lg py-sm border-b border-border-subtle overflow-x-auto">
           <span className="inline-flex items-center gap-xs px-sm py-xs rounded-full bg-primary-container text-on-primary-container text-xs font-medium whitespace-nowrap">
             <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
@@ -185,12 +163,48 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
             Last 30 Days
           </span>
           <div className="flex-1" />
-          <span className="text-xs text-tertiary whitespace-nowrap">3 Semantic Matches</span>
-          <span className="text-xs text-tertiary whitespace-nowrap">Vector Search Active</span>
+          {query.trim() && (
+            <span className="text-xs text-tertiary whitespace-nowrap">
+              {results.length} {results.length === 1 ? "match" : "matches"}
+            </span>
+          )}
         </div>
 
         <div ref={resultsRef} className="max-h-[420px] overflow-y-auto">
-          {mockResults.map((result, index) => (
+          {!query.trim() && (
+            <div className="flex flex-col items-center justify-center py-2xl">
+              <span className="material-icons-round text-text-secondary text-[32px] mb-sm">
+                search
+              </span>
+              <p className="text-text-secondary font-meta-mono text-xs">
+                Type to search...
+              </p>
+            </div>
+          )}
+
+          {query.trim() && isSearching && (
+            <div className="flex flex-col items-center justify-center py-2xl">
+              <span className="material-icons-round text-text-secondary text-[32px] mb-sm animate-spin">
+                progress_activity
+              </span>
+              <p className="text-text-secondary font-meta-mono text-xs">
+                Searching...
+              </p>
+            </div>
+          )}
+
+          {query.trim() && !isSearching && results.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-2xl">
+              <span className="material-icons-round text-text-secondary text-[32px] mb-sm">
+                search_off
+              </span>
+              <p className="text-text-secondary font-meta-mono text-xs">
+                No results found
+              </p>
+            </div>
+          )}
+
+          {results.map((result, index) => (
             <div
               key={result.id}
               className={`flex gap-md px-lg py-md border-b border-border-subtle cursor-pointer transition-colors duration-100 ${
@@ -210,11 +224,6 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
                 <div className="flex items-center gap-sm mb-xs">
                   <span className="text-headline-sm font-headline-md text-text-primary truncate">
                     {result.title}
-                  </span>
-                  <span
-                    className={`inline-flex items-center px-sm py-xs rounded-full text-xs font-medium whitespace-nowrap ${result.matchBadgeClass}`}
-                  >
-                    {result.matchPercent}% Match
                   </span>
                 </div>
                 <p className="text-sm text-text-secondary line-clamp-2">{result.content}</p>
@@ -244,9 +253,6 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
           </button>
         </div>
 
-        {/* Footer — keyboard shortcut hints and branding.
-            Showing keyboard shortcuts teaches users the faster workflow.
-            "VectorEngine 2.0" branding reinforces the semantic search capability. */}
         <div className="flex items-center justify-between px-lg py-sm border-t border-border-subtle">
           <div className="flex items-center gap-md text-xs text-on-surface-variant">
             <span className="inline-flex items-center gap-xs">
@@ -263,7 +269,7 @@ export default function ContextSearchModal({ open, onClose }: ContextSearchModal
             </span>
           </div>
           <span className="text-xs text-tertiary font-meta-mono">
-            Search powered by VectorEngine 2.0
+            Search powered by Buiry Context Engine
           </span>
         </div>
       </div>
