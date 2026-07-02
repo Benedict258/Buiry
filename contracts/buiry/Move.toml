@@ -2,5 +2,8 @@
 name = "buiry"
 version = "0.1.0"
 
+[addresses]
+buiry = "0x0"
+
 [dependencies]
-sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "testnet" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "testnet-v1.34.1" }
