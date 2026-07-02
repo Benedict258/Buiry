@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -10,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: buiry
       POSTGRES_PASSWORD: buiry_dev_password
-      POSTGRES_DB: buiry
+      POSTGRES_DB: buiry_dev
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,20 +17,5 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: buiry-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
 volumes:
   postgres_data:
-  redis_data:
