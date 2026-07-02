@@ -1,5 +1,5 @@
 {
-  "name": "@benedict258/buiry",
+  "name": "@buiry/buiry",
   "version": "0.1.0",
   "description": "Developer SDK for Buiry — persistent AI agent memory and dataset harvesting",
   "type": "module",

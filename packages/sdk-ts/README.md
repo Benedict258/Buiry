@@ -1,11 +1,11 @@
-# @benedict258/buiry
+# @buiry/buiry
 
 TypeScript SDK for [Buiry](https://github.com/Benedict258/Buiry) — persistent AI agent memory and dataset harvesting.
 
 ## Install
 
 ```bash
-npm install @benedict258/buiry
+npm install @buiry/buiry
 ```
 
 ## Quick Start
