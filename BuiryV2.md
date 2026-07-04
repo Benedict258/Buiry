@@ -350,47 +350,322 @@ Buiry MCP (`@buiry/mcp@0.1.2`) provides persistent memory across AI sessions.
 
 ---
 
-## 7. What's Built vs What's Planned
+## 7. Phased Execution Plan with ADK Sub-Agents
 
-### Phase 1: Hackathon (Built — July 2026)
-
-| Component | Status | Files |
-|-----------|--------|-------|
-| MCP Server (8 tools) | Done | `packages/buiry-mcp/` — npm published |
-| SDK (TypeScript) | Done | `packages/sdk-ts/` — npm published |
-| Backend API | Done | `apps/api/` — Railway deployed |
-| Frontend Dashboard | Done | `apps/web/` — Vercel deployed |
-| Data Agent Pipeline | Done | `packages/data-agent/` |
-| Context Guardian Agent | Done | `agents/context_guardian.py` |
-| Dataset Generator Agent | Done | `agents/dataset_generator.py` |
-| Session Analyst Agent | Done | `agents/session_analyst.py` |
-| Intent Router Agent | Done | `agents/intent_router.py` |
-| Buiry CLI Agent | Done | `agents/buiry_cli_agent.py` |
-| Coordinator + Dev + Review | Done | `agents/coordinator.py`, `dev_agent.py`, `review_agent.py` |
-| Sui Contracts | Done | `contracts/buiry/` — testnet deployed |
-| CI/CD | Done | `.github/workflows/` |
-| Documentation | Done | `BuildDocs/`, `ProjectDocs/`, `README.md` |
-
-### Phase 2: Post-Hackathon (Planned)
-
-| Component | Priority | Effort |
-|-----------|----------|--------|
-| Universal SDK adapters (12+ providers) | High | 2 weeks |
-| Python SDK | High | 1 week |
-| Contract Guardian Agent (Sui verification) | High | 1 week |
-| Quality Auditor Agent | High | 1 week |
-| Multi-tenant backend | High | 2 weeks |
-| Dataset export (HuggingFace, TensorFlow, PyTorch) | Medium | 1 week |
-| Real-time streaming capture | Medium | 1 week |
-| Go SDK | Medium | 1 week |
-| Analytics dashboard | Medium | 2 weeks |
-| Dataset marketplace | Low | 3 weeks |
-| Enterprise SSO/RBAC | Low | 2 weeks |
-| Rust SDK | Low | 1 week |
+Each phase is led by a Google ADK agent. Every agent has clear responsibilities, deliverables, and dependencies. Agents collaborate — output of one feeds input of another.
 
 ---
 
-## 8. Architecture Decision Record
+### Phase 1: Hackathon Complete — Submission Ready
+
+**Goal**: Submit to Kaggle by July 6, 2026. Bug-free, fully tested.
+
+**Lead Agent**: `Orchestrator`
+
+```
+┌─────────────────────────────────────────┐
+│          PHASE 1 AGENT TRIAD             │
+│                                          │
+│  Orchestrator ──→ Intent Router          │
+│       │              │                   │
+│       │   Dataset Generator              │
+│       │        │                         │
+│       └────────┼──── Session Analyst     │
+│                │         │               │
+│                └── Context Guardian      │
+│                       │                  │
+│                  MCP Server (8 tools)     │
+└─────────────────────────────────────────┘
+```
+
+| Sub-Agent | Responsibility | Deliverable | Status |
+|-----------|---------------|-------------|--------|
+| **Orchestrator** | Coordinates all agents. Ensures session lifecycle (start → work → end). | Working `e2e-demo.py` | Done |
+| **Intent Router** | Classifies user input → MCP tool calls. Natural language only. | `agents/intent_router.py` | Done |
+| **Context Guardian** | Scans all data for PII. Rejects secrets. Scrubs user data. | `agents/context_guardian.py` | Done |
+| **Dataset Generator** | Analyzes captured interactions. Generates labeled datasets. | `agents/dataset_generator.py` | Done |
+| **Session Analyst** | Reviews session history. Detects patterns. Predicts next steps. | `agents/session_analyst.py` | Done |
+| **Coordinator** | Delegates C→D→R pipeline for development tasks. | `agents/coordinator.py` | Done |
+| **Developer** | Generates code from plans. | `agents/dev_agent.py` | Done |
+| **Reviewer** | Reviews code. Flags issues. | `agents/review_agent.py` | Done |
+| **Buiry CLI** | Wraps all tools for Agents CLI. | `agents/buiry_cli_agent.py` | Done |
+
+**Phase 1 Deliverables**
+- [x] 8 AI agents (all ADK, all `gemini-2.5-flash`)
+- [x] MCP Server (8 tools, npm published, Antigravity-verified)
+- [x] SDK (`@buiry/buiry@0.1.0`, npm published)
+- [x] Backend (Railway, PG + Redis, auth, rate limiting)
+- [x] Frontend (Vercel, responsive, light/dark, live data)
+- [x] Sui contracts (testnet deployed)
+- [x] CI/CD (GitHub Actions)
+- [x] Writeup (2012 words)
+- [ ] YouTube video recording
+- [ ] Cover image
+- [ ] Kaggle submission
+
+---
+
+### Phase 2: Universal Adapter System
+
+**Goal**: Buiry SDK works with every major LLM provider. One `wrap()` call. Zero config.
+
+**Lead Agent**: `Dataset Generator` + `Developer`
+
+**Why Dataset Generator leads**: Every new adapter means more data sources. The agent must verify each adapter captures the correct fields (prompt, response, tokens, latency, model, domain).
+
+```
+┌──────────────────────────────────────────────┐
+│           PHASE 2 AGENT QUARTET               │
+│                                               │
+│  Developer ──→ generates adapter code         │
+│      │                                        │
+│      ├── Reviewer ──→ reviews adapter quality │
+│      │        │                               │
+│      │        └── Dataset Generator           │
+│      │             │    verifies adapter      │
+│      │             │    captures correct data │
+│      │             │                          │
+│      └── Context Guardian                     │
+│               │   verifies no PII leak        │
+│               │   in adapter implementation   │
+└──────────────────────────────────────────────┘
+```
+
+| Sub-Agent | Responsibility | Deliverable |
+|-----------|---------------|-------------|
+| **Developer** | Generates adapter code for each LLM provider. Follows existing adapter pattern. | 12 adapter files |
+| **Reviewer** | Reviews each adapter. Checks: error handling, type safety, edge cases. Flags issues. | Review reports per adapter |
+| **Dataset Generator** | Tests each adapter with real LLM calls. Verifies: prompt capture, response capture, token counting, latency tracking. | Validation report per adapter |
+| **Context Guardian** | Scans adapter code for PII leakage patterns. Ensures no secrets in generated code. | Security audit per adapter |
+
+**Phase 2 Deliverables**
+| # | Adapter | Provider | Status |
+|---|---------|----------|--------|
+| 1 | Anthropic | Claude API | Done |
+| 2 | OpenAI | GPT, o-series | Done |
+| 3 | Google | Gemini, Vertex AI | Done |
+| 4 | Groq | Llama, Mixtral, DeepSeek | New |
+| 5 | Mistral | Mistral, Codestral | New |
+| 6 | Cohere | Command, Embed | New |
+| 7 | xAI | Grok | New |
+| 8 | DeepSeek | DeepSeek-V3, R1 | New |
+| 9 | Together AI | All open models | New |
+| 10 | Fireworks | All open models | New |
+| 11 | Perplexity | Sonar, Online | New |
+| 12 | Replicate | All hosted models | New |
+| 13 | Ollama (local) | Llama, Mistral, Gemma | New |
+
+**Phase 2 Acceptance Criteria**
+- `buiry.wrap(client)` auto-detects provider — no config needed
+- Every adapter captures: prompt, response, tokens, model, latency, domain
+- Context Guardian verifies zero PII leaks in adapter code
+- Dataset Generator validates each adapter produces correct dataset signals
+
+---
+
+### Phase 3: Multi-Language SDKs
+
+**Goal**: Buiry SDK in Python, Go, Rust. Same API. Same agents.
+
+**Lead Agent**: `Developer` + `Reviewer`
+
+```
+┌──────────────────────────────────────────────┐
+│           PHASE 3 AGENT DUO                   │
+│                                               │
+│  Developer ──→ generates SDK in target lang   │
+│      │        (Python, Go, Rust)             │
+│      │                                        │
+│      └── Reviewer ──→ reviews SDK quality     │
+│               │   cross-checks against        │
+│               │   TypeScript reference impl    │
+│               │                               │
+│               └── Dataset Generator           │
+│                      validates data pipeline  │
+│                      works end-to-end in      │
+│                      each language             │
+└──────────────────────────────────────────────┘
+```
+
+| Sub-Agent | Responsibility | Deliverable |
+|-----------|---------------|-------------|
+| **Developer** | Generates SDK code in target language. Follows TypeScript reference. | SDK source per language |
+| **Reviewer** | Cross-checks against TypeScript reference. Validates API parity. Tests edge cases. | Review report per SDK |
+| **Dataset Generator** | End-to-end test: SDK → capture → Guardian → Generator → datasets. | Pipeline validation per SDK |
+
+**Phase 3 Deliverables**
+| SDK | Registry | Priority | Status |
+|-----|----------|----------|--------|
+| TypeScript | `@buiry/buiry` (npm) | Done | Published v0.1.0 |
+| Python | `buiry` (PyPI) | High | Planned |
+| Go | `buiry` (go modules) | Medium | Planned |
+| Rust | `buiry` (crates.io) | Low | Planned |
+| Java/Kotlin | `buiry` (Maven Central) | Low | Planned |
+| Ruby | `buiry` (RubyGems) | Low | Planned |
+
+**Phase 3 Acceptance Criteria**
+- Same `buiry.wrap()` API in every language
+- Same agent pipeline (Guardian → Generator → Analyst) works with data from any SDK
+- All SDKs published to respective package registries with README + examples
+
+---
+
+### Phase 4: Advanced AI Agents
+
+**Goal**: Two new agents. Contract Guardian verifies datasets on Sui blockchain. Quality Auditor validates dataset quality before export.
+
+**Lead Agent**: `Orchestrator`
+
+```
+┌──────────────────────────────────────────────┐
+│           PHASE 4 — TWO NEW AGENTS            │
+│                                               │
+│  Quality Auditor                              │
+│  ┌─────────────────────────────────┐          │
+│  │ Reviews every generated dataset │          │
+│  │ • Bias detection                │          │
+│  │ • Claim validation against src  │          │
+│  │ • Quality scoring (0-100)       │          │
+│  │ • Dataset cards (model card fmt)│          │
+│  │ • Flags low-quality datasets    │          │
+│  └──────────────┬──────────────────┘          │
+│                 │ feeds into                   │
+│                 ▼                              │
+│  Contract Guardian                            │
+│  ┌─────────────────────────────────┐          │
+│  │ Verifies datasets on Sui chain  │          │
+│  │ • Generates on-chain attestation│          │
+│  │ • Links dataset hash → Sui TX   │          │
+│  │ • Tamper detection              │          │
+│  │ • Immutable provenance proof    │          │
+│  └─────────────────────────────────┘          │
+│                                               │
+│  Both agents report to Session Analyst        │
+│  for inclusion in session insights            │
+└──────────────────────────────────────────────┘
+```
+
+| Sub-Agent | Responsibility | Deliverable | Status |
+|-----------|---------------|-------------|--------|
+| **Quality Auditor** | Reviews datasets for quality, bias, validity. Generates model-card-format documentation. | `agents/quality_auditor.py` | New |
+| **Contract Guardian** | Generates on-chain attestations for verified datasets. Links dataset hash to Sui transactions. Detects tampered claims. | `agents/contract_guardian.py` | New |
+
+**Phase 4 Deliverables**
+- Quality Auditor agent validates every dataset before export
+- Dataset cards generated in standard model-card format
+- Contract Guardian links datasets to Sui blockchain (testnet → mainnet)
+- Immutable provenance: any dataset can be verified against on-chain record
+- Tamper detection: if dataset changes, hash mismatch detected
+
+---
+
+### Phase 5: Multi-Tenant Platform
+
+**Goal**: Production-grade backend. Multi-user, multi-project, enterprise-ready.
+
+**Lead Agent**: `Session Analyst` + `Dataset Generator`
+
+```
+┌──────────────────────────────────────────────┐
+│           PHASE 5 AGENT CONSTELLATION          │
+│                                               │
+│  Session Analyst  ──→ monitors usage patterns │
+│      │               predicts scaling needs   │
+│      │                                        │
+│      ├── Dataset Generator                    │
+│      │   └── cross-tenant dataset merging     │
+│      │       (opt-in, anonymized)             │
+│      │                                        │
+│      ├── Context Guardian                     │
+│      │   └── per-tenant PII policies          │
+│      │       (EU tenant vs US tenant)         │
+│      │                                        │
+│      └── Quality Auditor                      │
+│          └── tenant-level quality scoring     │
+│              dataset health per project       │
+└──────────────────────────────────────────────┘
+```
+
+| Sub-Agent | Responsibility | Deliverable |
+|-----------|---------------|-------------|
+| **Session Analyst** | Monitors usage across tenants. Predicts scaling. Detects anomalies. | Usage analytics |
+| **Dataset Generator** | Merges datasets across tenants (opt-in). Cross-tenant learning. | Cross-tenant datasets |
+| **Context Guardian** | Per-tenant privacy policies. EU vs US compliance. Data residency. | Policy enforcement |
+| **Quality Auditor** | Per-project dataset quality. Health scores. Improvement recommendations. | Quality dashboard |
+
+**Phase 5 Deliverables**
+- Multi-tenant backend (user accounts, projects, API key management)
+- Dataset export: HuggingFace, TensorFlow, PyTorch formats
+- Real-time streaming capture (not batch)
+- Analytics dashboard (usage, quality, domains)
+- Enterprise: SSO, RBAC, audit logs
+- Dataset marketplace (opt-in sharing, verified by Contract Guardian)
+
+---
+
+### Phase 6: Ecosystem & Scale
+
+**Goal**: Buiry as the standard data ownership layer for AI applications.
+
+**Lead Agent**: All agents + new `Market Guardian` agent
+
+| Sub-Agent | Responsibility |
+|-----------|---------------|
+| **Market Guardian** | Verifies dataset quality in marketplace. Handles disputes. Manages licensing. |
+| **All existing agents** | Scale to handle millions of interactions per minute. Multi-region deployment. |
+| **Developer + Reviewer** | Community SDKs (Rust, Java, Ruby, Swift). Open-source contributions. |
+
+---
+
+## 8. Agent Collaboration Map
+
+How all agents work together across all phases:
+
+```
+                          ┌──────────────────┐
+                          │   ORCHESTRATOR   │◄── Starts every session
+                          │  (Session Mgmt)  │◄── Coordinates all agents
+                          └────────┬─────────┘
+                                   │
+        ┌──────────────┬───────────┼───────────┬──────────────┬──────────────┐
+        ▼              ▼           ▼           ▼              ▼              ▼
+   ┌─────────┐  ┌───────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+   │CONTEXT  │  │  DATASET  │ │SESSION  │ │ INTENT   │ │QUALITY   │ │CONTRACT  │
+   │GUARDIAN │  │ GENERATOR │ │ANALYST  │ │ ROUTER   │ │AUDITOR   │ │GUARDIAN  │
+   └────┬────┘  └─────┬─────┘ └────┬────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
+        │             │            │           │            │            │
+        │   ┌─────────┘            │           │            │            │
+        │   │    ┌─────────────────┘           │            │            │
+        │   │    │    ┌────────────────────────┘            │            │
+        │   │    │    │    ┌─────────────────────────────────┘            │
+        │   │    │    │    │    ┌──────────────────────────────────────────┘
+        ▼   ▼    ▼    ▼    ▼    ▼
+   ┌─────────────────────────────────────────────┐
+   │              BUIRY MCP SERVER                │
+   │            (8 tools, stdio + HTTP)           │
+   │     Cross-agent persistent memory layer       │
+   └─────────────────────┬───────────────────────┘
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+   ┌────────────┐ ┌────────────┐ ┌────────────┐
+   │  Antigravity│ │Claude Code │ │  Cursor    │
+   │  IDE + CLI  │ │            │ │            │
+   └────────────┘ └────────────┘ └────────────┘
+         Any platform. Same memory. Same agents.
+```
+
+**Agent-to-Agent Communication Pattern**:
+1. **Orchestrator** → starts session, delegates to specialists
+2. **Context Guardian** → scans data, passes clean data to Generator and Analyst
+3. **Dataset Generator** → produces datasets, passes to Quality Auditor
+4. **Quality Auditor** → validates datasets, passes verified ones to Contract Guardian
+5. **Contract Guardian** → attests on-chain, reports back to Session Analyst
+6. **Session Analyst** → aggregates all agent outputs into insights, saves via MCP
+
+---
+
+## 9. Architecture Decision Record
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
@@ -400,10 +675,12 @@ Buiry MCP (`@buiry/mcp@0.1.2`) provides persistent memory across AI sessions.
 | Keyword pre-scan + LLM deep-scan | Reduces Gemini API costs; regex catches 80% of PII instantly | 2026-07-03 |
 | LLM agents, not pipelines | Judges evaluate "agents as central to solution"; keyword matching doesn't count | 2026-07-04 |
 | SDK as passive wrapper | Zero latency impact on user's app; silent capture = adoption | 2026-07-04 |
+| Phase execution by ADK sub-agents | Agents build Buiry itself — meta-agent architecture. Developer + Reviewer agents generate SDK code; Guardian audits it; Generator validates data flow | 2026-07-04 |
+| Adapter auto-detection over config | Zero-config adoption: `buiry.wrap(client)` detects provider without user specifying it | 2026-07-04 |
 
 ---
 
-## 9. How to Demo (One Command)
+## 10. How to Demo (One Command)
 
 ```bash
 # Clone
@@ -431,13 +708,13 @@ npm install @buiry/buiry
 
 ---
 
-## 10. The Pitch (30 seconds)
+## 11. The Pitch (30 seconds)
 
 > Every AI-powered application generates training data. Chatbots, agents, copilots, APIs — every prompt and response is a training example. Today, that data evaporates. The developer owns nothing.
 >
 > **Buiry changes that.** One line of code — `buiry.wrap(yourLLM)` — and every interaction is captured, PII-scrubbed by AI agents, and turned into labeled datasets you own.
 >
-> Three AI agents work together: Context Guardian blocks secrets before storage. Dataset Generator classifies interactions into training data. Session Analyst detects patterns and predicts what you should build next.
+> Six AI agents work together: Context Guardian blocks secrets before storage. Dataset Generator classifies interactions into training data. Session Analyst detects patterns and predicts what you should build next. Quality Auditor validates every dataset. Contract Guardian attests them on-chain.
 >
 > All built with Google ADK and Gemini. All open source.
 >
