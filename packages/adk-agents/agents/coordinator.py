@@ -23,7 +23,7 @@ from google.adk.agents import Agent
 
 coordinator = Agent(
     name="coordinator",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     description="Orchestrates coding sessions and coordinates between DevAgent and ReviewAgent.",
     # The instruction prompt is the coordinator's "operating system" — it defines
     # the agent's behavior, constraints, and interaction patterns with MCP tools.

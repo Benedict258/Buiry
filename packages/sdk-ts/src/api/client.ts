@@ -66,4 +66,18 @@ export class BuiryAPI {
       body: JSON.stringify({}),
     });
   }
+
+  async getDatasets(sessionId: string): Promise<unknown> {
+    return this.request("/api/dataset/list", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    }).catch(() => []);
+  }
+
+  async getSessions(): Promise<unknown> {
+    return this.request("/api/session/search", {
+      method: "POST",
+      body: JSON.stringify({ query: "", limit: 50 }),
+    });
+  }
 }

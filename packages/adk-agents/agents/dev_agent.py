@@ -28,7 +28,7 @@ from google.adk.agents import Agent
 
 dev_agent = Agent(
     name="dev_agent",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     description="Handles implementation tasks, reads session memory, plans and executes code changes.",
     # The instruction prompt enforces disciplined development practices:
     #   - "Never repeat a decision" leverages Buiry's memory as a knowledge base

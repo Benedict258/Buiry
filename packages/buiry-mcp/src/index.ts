@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * MCP Server Entry Point
  *
@@ -35,6 +36,7 @@ import {
   generateDocsArgs,
   handleGenerateDocs,
 } from "./tools/docs.js";
+import { executeArgs, handleExecute } from "./tools/execute.js";
 
 /**
  * Detect the project root directory for memory file resolution.
@@ -181,6 +183,29 @@ server.tool(
   "Generate a PRD, Architecture, or Dev Plan document from session history.",
   generateDocsArgs,
   async (args) => handleGenerateDocs(args, detectProjectRoot)
+);
+
+/**
+ * Tool 8: buiry_execute
+ *
+ * Single-entry intent router. Takes raw user text, classifies the intent
+ * (start_session, log_decision, flag_issue, etc.), extracts parameters,
+ * and routes to the appropriate handler automatically.
+ *
+ * This is the "universal interface" — any agent on any platform can send
+ * raw user messages without needing to know which specific Buiry tool to call.
+ * The intent engine handles classification and dispatching internally.
+ *
+ * Design choice: Intent classification uses keyword pattern matching for
+ * speed and offline capability (no LLM dependency). The ADK-based intent
+ * router (agents/intent_router.py) provides a more sophisticated LLM-powered
+ * alternative for advanced deployments.
+ */
+server.tool(
+  "buiry_execute",
+  "Universal intent router — send raw user text and Buiry automatically classifies intent, extracts params, and calls the right tool (start_session, log_decision, flag_issue, get_context, generate_docs, or init).",
+  executeArgs,
+  async (args) => handleExecute(args, detectProjectRoot)
 );
 
 /**

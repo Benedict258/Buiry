@@ -25,7 +25,7 @@ from google.adk.agents import Agent
 
 review_agent = Agent(
     name="review_agent",
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     description="Reviews code changes, cross-checks decisions against known issues, and flags risks.",
     # The instruction prompt defines the review checklist. Key design choices:
     #   - "Cross-check against known_issues" ensures unresolved problems get attention

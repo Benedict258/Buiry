@@ -1,0 +1,9 @@
+# Buiry Agent configuration for Google Agents CLI
+# Usage: agents chat --agent buiry
+
+agents:
+  - name: buiry
+    description: "Buiry Memory Agent — persistent context and session management for AI coding agents"
+    model: gemini-2.5-flash
+    instruction: agents/buiry_cli_agent.py
+    type: python
