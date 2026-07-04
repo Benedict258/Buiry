@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "buiry"
+version = "0.1.0"
+description = "Universal data ownership for AI applications. One SDK, zero config, full ownership."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [{name = "Benedict", email = "hello@buiry.dev"}]
+keywords = ["ai", "data-ownership", "fine-tuning", "llm", "training-data"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "httpx>=0.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Benedict258/Buiry"
+Documentation = "https://github.com/Benedict258/Buiry#readme"
+Repository = "https://github.com/Benedict258/Buiry"
+Issues = "https://github.com/Benedict258/Buiry/issues"
+
+[tool.setuptools.packages.find]
+include = ["buiry*"]
