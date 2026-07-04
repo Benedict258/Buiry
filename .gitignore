@@ -48,3 +48,4 @@ logs/
 # Misc
 *.tgz
 *.tar.gz
+Build-Context-Memory.json
