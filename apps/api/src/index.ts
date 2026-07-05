@@ -23,6 +23,7 @@ import { sentryErrorHandler } from './middleware/sentry.js'
 import { config } from './config.js'
 import { initApiKeysTable, bootstrapDefaultKey } from './db/keys.js'
 import { initProjectsTable } from './db/projects.js'
+import { getPool } from './db/pool.js'
 
 const app = express()
 
@@ -34,8 +35,11 @@ app.use(rateLimit())
 
 async function checkPostgres() {
   try {
-    // Try to query PostgreSQL
-    return 'connected'
+    const pool = getPool()
+    const client = await pool.connect()
+    const result = await client.query('SELECT 1 as ok')
+    client.release()
+    return result.rows[0]?.ok === 1 ? 'connected' : 'error'
   } catch {
     return 'disconnected'
   }
@@ -63,6 +67,28 @@ async function bootstrap() {
 }
 
 bootstrap().catch(console.error)
+
+app.post('/api/keys/bootstrap', async (req, res) => {
+  try {
+    const defaultKey = process.env.API_KEY || 'buiry_sk_live_dev_12345'
+    const defaultHash = crypto.createHash('sha256').update(defaultKey).digest('hex')
+    const defaultPrefix = defaultKey.slice(0, 12)
+    await initApiKeysTable()
+    await bootstrapDefaultKey(defaultHash, defaultPrefix)
+    const pool = getPool()
+    const client = await pool.connect()
+    const result = await client.query('SELECT COUNT(*) as count FROM api_keys')
+    client.release()
+    res.json({
+      success: true,
+      keys_count: parseInt(result.rows[0]?.count || '0'),
+      default_key: defaultPrefix + '***',
+    })
+  } catch (err) {
+    console.error('Bootstrap failed:', err)
+    res.status(500).json({ error: 'Bootstrap failed', details: String(err) })
+  }
+})
 
 app.get('/health', async (req, res) => {
   const checks = {

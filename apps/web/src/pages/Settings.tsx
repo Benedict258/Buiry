@@ -39,8 +39,12 @@ export default function Settings() {
   const [copied, setCopied] = useState(false);
 
   const fetchKeys = useCallback(async () => {
-    if (!API_KEY) return;
+    if (!API_KEY) {
+      setError("VITE_BUIRY_API_KEY not set. Add it to your Vercel environment variables.");
+      return;
+    }
     setLoading(true);
+    setError("");
     try {
       const res = await fetch(`${API_URL}/api/keys`, {
         headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
@@ -48,9 +52,12 @@ export default function Settings() {
       if (res.ok) {
         const data = await res.json();
         setKeys(data.keys || []);
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Unknown' }));
+        setError(err.error || "Failed to load keys");
       }
     } catch {
-      // Dashboard may not be connected to backend
+      setError("Cannot connect to API. Is the backend running?");
     } finally {
       setLoading(false);
     }
