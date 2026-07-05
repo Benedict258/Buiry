@@ -13,6 +13,8 @@ import { docsRoutes } from './routes/docs.js'
 import { keyRoutes } from './routes/keys.js'
 import { cloudSessionRoutes } from './routes/cloud-session.js'
 import { projectRoutes } from './routes/projects.js'
+import { authRoutes, initUsersTable, initTokensTable } from './routes/auth.js'
+import { settingsRoutes, initUserSettingsTable } from './routes/settings.js'
 import { authMiddleware } from './middleware/auth.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { rateLimit } from './middleware/ratelimit.js'
@@ -51,6 +53,9 @@ async function checkRedis() {
 async function bootstrap() {
   await initApiKeysTable()
   await initProjectsTable()
+  await initUsersTable()
+  await initTokensTable()
+  await initUserSettingsTable()
   const defaultKey = process.env.API_KEY || 'buiry_sk_live_dev_12345'
   const defaultHash = crypto.createHash('sha256').update(defaultKey).digest('hex')
   const defaultPrefix = defaultKey.slice(0, 12)
@@ -73,6 +78,7 @@ app.get('/health', async (req, res) => {
   res.json(checks)
 })
 
+app.use('/api/auth', authRoutes)
 app.use('/api/session', authMiddleware, sessionRoutes)
 app.use('/api/dataset', authMiddleware, datasetRoutes)
 app.use('/api/workspace', authMiddleware, workspaceRoutes)
@@ -81,6 +87,7 @@ app.use('/api/docs', authMiddleware, docsRoutes)
 app.use('/api/keys', authMiddleware, keyRoutes)
 app.use('/api/session/cloud', authMiddleware, cloudSessionRoutes)
 app.use('/api/projects', authMiddleware, projectRoutes)
+app.use('/api/settings', authMiddleware, settingsRoutes)
 
 app.use(sentryErrorHandler)
 app.use(errorHandler)

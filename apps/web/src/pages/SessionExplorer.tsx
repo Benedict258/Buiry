@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { getSessions } from "../lib/api";
+import { exportSessions } from "../lib/export";
 import type { SessionObject } from "../lib/types";
 
 interface SessionCardData {
@@ -99,13 +101,18 @@ function formatDateHeader(dateLabel: string): string {
 
 export default function SessionExplorer() {
   const [sessions, setSessions] = useState<SessionCardData[]>([]);
+  const [rawSessions, setRawSessions] = useState<SessionObject[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [agentFilter, setAgentFilter] = useState("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
+  const [showExport, setShowExport] = useState(false);
 
   useEffect(() => {
-    getSessions().then((raw) => setSessions(raw.map(mapSession)));
+    getSessions().then((raw) => {
+      setRawSessions(raw);
+      setSessions(raw.map(mapSession));
+    });
   }, []);
 
   useEffect(() => {
@@ -158,9 +165,33 @@ export default function SessionExplorer() {
               Historical Session Analytics &amp; Audit Logs
             </p>
           </div>
-          <button className="px-md py-sm bg-surface-card border border-border-subtle text-text-secondary font-meta-mono text-xs rounded hover:bg-surface-elevated transition-colors">
-            EXPORT.LOG
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowExport(!showExport)}
+              disabled={rawSessions.length === 0}
+              className="px-md py-sm bg-surface-card border border-border-subtle text-text-secondary font-meta-mono text-xs rounded hover:bg-surface-elevated hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="material-icons-round text-[14px] align-middle mr-xs">download</span>
+              Export
+            </button>
+            {showExport && (
+              <div className="absolute right-0 top-full mt-1 bg-surface-card border border-border-subtle rounded-lg shadow-lg z-40 py-sm min-w-[120px]">
+                {(["json", "csv", "txt"] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    onClick={() => {
+                      exportSessions(rawSessions, fmt);
+                      toast.success(`Exported as ${fmt.toUpperCase()}`);
+                      setShowExport(false);
+                    }}
+                    className="w-full text-left px-md py-sm text-sm text-text-primary hover:bg-surface-elevated transition-colors font-meta-mono uppercase"
+                  >
+                    {fmt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

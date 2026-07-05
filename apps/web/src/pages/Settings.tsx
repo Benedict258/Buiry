@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 
 const codeSnippet = `import { BuiryClient } from '@buiry/sdk';
 
@@ -60,6 +61,26 @@ export default function Settings() {
   }, [fetchKeys]);
 
   useEffect(() => {
+    if (!API_KEY) return;
+    fetch(`${API_URL}/api/settings/profile`, {
+      headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+    })
+      .then((res) => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then((data) => {
+        if (data?.profile) {
+          if (typeof data.profile.auto_capture === "boolean") setAutoCapture(data.profile.auto_capture);
+          if (data.profile.domain) setDomain(data.profile.domain);
+          if (data.profile.region) setRegion(data.profile.region);
+          if (data.profile.retention) setRetention(data.profile.retention);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href =
@@ -84,6 +105,7 @@ export default function Settings() {
         setFreshKey(data.api_key);
         setNewKeyName("");
         fetchKeys();
+        toast.success("API key created", { description: "Your new key is ready" });
       } else {
         const err = await res.json();
         setError(err.error || "Failed to create key");
@@ -132,9 +154,9 @@ export default function Settings() {
         <div className="col-span-12 md:col-span-8 space-y-lg">
           {/* Freshly Created Key Banner */}
           {freshKey && (
-            <section className="bg-success/10 border border-success/30 rounded-lg p-lg space-y-sm">
+            <section className="bg-status-success/10 border border-status-success/30 rounded-lg p-lg space-y-sm">
               <div className="flex items-center justify-between">
-                <h2 className="font-section-header text-sm font-semibold text-success">
+                <h2 className="font-section-header text-sm font-semibold text-status-success">
                   Key Created
                 </h2>
                 <button
@@ -161,7 +183,7 @@ export default function Settings() {
                 in your MCP config or <code className="bg-surface-container px-1 rounded text-[11px]">X-Api-Key</code> header.
               </p>
               {copied && (
-                <p className="text-success text-xs font-meta-mono">Copied to clipboard!</p>
+                <p className="text-status-success text-xs font-meta-mono">Copied to clipboard!</p>
               )}
             </section>
           )}
@@ -173,7 +195,7 @@ export default function Settings() {
             </h2>
 
             {error && (
-              <div className="px-md py-sm bg-error/10 border border-error/30 rounded text-error text-sm">
+              <div className="px-md py-sm bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
                 {error}
               </div>
             )}
@@ -219,7 +241,7 @@ export default function Settings() {
                       </span>
                       <span
                         className={`inline-block w-2 h-2 rounded-full ${
-                          key.is_active ? "bg-success" : "bg-error"
+                          key.is_active ? "bg-status-success" : "bg-status-error"
                         }`}
                       />
                       <span className="text-text-secondary font-meta-mono text-[10px]">
@@ -243,7 +265,7 @@ export default function Settings() {
                   {key.is_active && (
                     <button
                       onClick={() => revokeKey(key.id)}
-                      className="px-sm py-1 border border-error/30 text-error font-meta-mono text-[10px] rounded hover:bg-error/10 transition-colors ml-sm"
+                      className="px-sm py-1 border border-status-error/30 text-status-error font-meta-mono text-[10px] rounded hover:bg-status-error/10 transition-colors ml-sm"
                     >
                       Revoke
                     </button>
@@ -329,6 +351,34 @@ export default function Settings() {
                 </select>
               </div>
             </div>
+
+            <button
+              onClick={async () => {
+                if (!API_KEY) return;
+                try {
+                  const res = await fetch(`${API_URL}/api/settings/profile`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+                    body: JSON.stringify({
+                      auto_capture: autoCapture,
+                      domain,
+                      region,
+                      retention,
+                    }),
+                  });
+                  if (res.ok) {
+                    toast.success("Configuration saved");
+                  } else {
+                    toast.error("Failed to save configuration");
+                  }
+                } catch {
+                  toast.error("Cannot connect to API");
+                }
+              }}
+              className="px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors"
+            >
+              Save Configuration
+            </button>
           </section>
 
           {/* Code Snippet */}
@@ -391,10 +441,10 @@ export default function Settings() {
                 </div>
               </div>
               <div className="space-y-sm pt-sm border-t border-border-subtle">
-                <button className="w-full px-md py-sm border border-border-subtle text-text-secondary font-body-base text-sm rounded hover:bg-surface-elevated transition-colors">
+                <button disabled title="Coming Soon" className="w-full px-md py-sm border border-border-subtle text-text-secondary font-body-base text-sm rounded hover:bg-surface-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   Manage Billing
                 </button>
-                <button className="w-full px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors">
+                <button disabled title="Coming Soon" className="w-full px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   Upgrade Plan
                 </button>
               </div>
@@ -408,7 +458,7 @@ export default function Settings() {
             </h2>
             <div className="p-md bg-surface-container border border-border-subtle rounded">
               <div className="flex items-center gap-sm mb-sm">
-                <span className={`inline-block w-2 h-2 rounded-full ${keys.length > 0 ? "bg-success" : "bg-text-secondary"}`} />
+                <span className={`inline-block w-2 h-2 rounded-full ${keys.length > 0 ? "bg-status-success" : "bg-text-secondary"}`} />
                 <span className="text-text-primary text-sm font-body-base">
                   {keys.length > 0 ? "Connected" : "Configure API key"}
                 </span>

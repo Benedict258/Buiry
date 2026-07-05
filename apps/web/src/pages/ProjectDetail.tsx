@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { toast } from "sonner";
 import {
   getProjectDetail,
   getProjectFile,
@@ -19,7 +20,6 @@ export default function ProjectDetail() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [memory, setMemory] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,12 +52,10 @@ export default function ProjectDetail() {
   const handleSave = async () => {
     if (!id || !selectedFile) return;
     setSaving(true);
-    setSaved(false);
     const ok = await saveProjectFile(id, selectedFile.filename, editingContent);
     if (ok) {
       setSelectedFile({ ...selectedFile, content: editingContent });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      toast.success("File saved");
     }
     setSaving(false);
   };
@@ -182,9 +180,6 @@ export default function ProjectDetail() {
                     </span>
                   </div>
                   <div className="flex items-center gap-sm">
-                    {saved && (
-                      <span className="text-success text-xs font-meta-mono">Saved!</span>
-                    )}
                     <button
                       onClick={handleSave}
                       disabled={saving}

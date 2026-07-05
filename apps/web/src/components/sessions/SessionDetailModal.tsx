@@ -1,5 +1,7 @@
 import { useEffect } from "react";
+import { toast } from "sonner";
 import type { SessionObject } from "../../lib/types";
+import { exportSingleSession } from "../../lib/export";
 
 export interface SessionDetail {
   id: string;
@@ -129,7 +131,13 @@ export default function SessionDetailModal({ isOpen, onClose, session }: Session
             </h2>
           </div>
           <div className="flex items-center gap-sm">
-            <button className="px-sm py-xs border border-border-subtle text-text-secondary font-body-base text-xs rounded hover:bg-surface-elevated transition-colors">
+            <button
+              onClick={() => {
+                exportSingleSession(session);
+                toast.success("Exported session as JSON");
+              }}
+              className="px-sm py-xs border border-border-subtle text-text-secondary font-body-base text-xs rounded hover:bg-surface-elevated transition-colors"
+            >
               Copy JSON
             </button>
             <button
@@ -274,7 +282,13 @@ export default function SessionDetailModal({ isOpen, onClose, session }: Session
             <span className="text-status-success text-xs font-body-base">All signals normal</span>
           </div>
           <div className="flex items-center gap-sm">
-            <button className="px-md py-sm border border-border-subtle text-text-secondary font-body-base text-xs rounded hover:bg-surface-elevated transition-colors">
+            <button
+              onClick={() => {
+                exportSingleSession(session);
+                toast.success("Exported session as JSON");
+              }}
+              className="px-md py-sm border border-border-subtle text-text-secondary font-body-base text-xs rounded hover:bg-surface-elevated transition-colors"
+            >
               Download Logs
             </button>
             <button className="px-md py-sm bg-primary text-on-primary font-body-base text-xs font-medium rounded hover:bg-primary/80 transition-colors">

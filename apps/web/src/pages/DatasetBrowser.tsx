@@ -4,6 +4,11 @@ import { getDatasets, type Dataset } from "../lib/api";
 export default function DatasetBrowser() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
 
+  const fetchDatasets = () => {
+    setDatasets([]);
+    getDatasets().then(setDatasets);
+  };
+
   useEffect(() => {
     getDatasets().then(setDatasets);
   }, []);
@@ -33,17 +38,18 @@ export default function DatasetBrowser() {
             </p>
           </div>
           <div className="flex items-center gap-sm">
+            <button
+              onClick={fetchDatasets}
+              className="px-md py-sm bg-surface-card border border-border-subtle text-text-secondary font-meta-mono text-xs rounded hover:bg-surface-elevated transition-colors"
+            >
+              <span className="material-icons-round text-[14px] align-middle mr-xs">refresh</span>
+              Refresh
+            </button>
             <button className="px-md py-sm bg-surface-card border border-border-subtle text-text-secondary font-meta-mono text-xs rounded hover:bg-surface-elevated transition-colors">
               <span className="material-icons-round text-[14px] align-middle mr-xs">
                 filter_list
               </span>
               FILTERS
-            </button>
-            <button className="px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors">
-              <span className="material-icons-round text-[16px] align-middle mr-xs">
-                add
-              </span>
-              Ingest Dataset
             </button>
           </div>
         </div>
@@ -59,7 +65,7 @@ export default function DatasetBrowser() {
             No datasets yet
           </p>
           <p className="text-text-secondary text-sm font-body-base">
-            Ingest your first dataset to get started.
+            0 datasets found
           </p>
         </div>
       ) : (
@@ -125,59 +131,15 @@ export default function DatasetBrowser() {
                 </div>
               </div>
 
-              <div className="px-md py-sm bg-surface-container-lowest border-t border-border-subtle flex items-center gap-sm">
-                <button className="flex-1 px-sm py-[4px] bg-surface-card border border-border-subtle rounded font-meta-mono text-[10px] text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
-                  VIEW_SAMPLE
-                </button>
-                <button className="flex-1 px-sm py-[4px] bg-surface-card border border-border-subtle rounded font-meta-mono text-[10px] text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
-                  DOWNLOAD
-                </button>
-                <button className="p-sm bg-surface-card border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
-                  <span className="material-icons-round text-[14px]">
-                    shopping_bag
-                  </span>
-                </button>
-              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ── Audit Trail ─────────────────────────────────────────────── */}
-      <section className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden">
-        <div className="px-md py-sm border-b border-border-subtle">
-          <h2 className="font-section-header text-sm font-semibold text-text-primary">
-            Audit Trail
-          </h2>
-        </div>
-        <div className="p-lg flex flex-col items-center justify-center py-xl">
-          <span className="material-icons-round text-text-secondary text-[32px] mb-sm">
-            receipt_long
-          </span>
-          <p className="text-text-secondary font-meta-mono text-xs">
-            No audit events recorded yet.
-          </p>
-        </div>
-      </section>
-
-      {/* ── Stats Cards ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
-        <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-xs">
-          <p className="text-text-secondary font-meta-mono text-[10px] uppercase">
-            Total Harvested
-          </p>
-          <p className="text-headline-lg font-headline-lg font-bold text-text-primary">
-            0 TB
-          </p>
-        </div>
-        <div className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-xs">
-          <p className="text-text-secondary font-meta-mono text-[10px] uppercase">
-            Marketplace Revenue
-          </p>
-          <p className="text-headline-lg font-headline-lg font-bold text-text-primary">
-            0 SUI
-          </p>
-        </div>
+      <div className="text-center py-lg">
+        <p className="text-text-secondary text-sm">
+          {datasets.length} dataset{datasets.length !== 1 ? 's' : ''} registered
+        </p>
       </div>
     </div>
   );

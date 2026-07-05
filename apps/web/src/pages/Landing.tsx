@@ -92,11 +92,6 @@ function HeroSection() {
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-secondary/5 blur-[100px]" />
 
       <div className="relative container-landing px-6 md:px-12 lg:px-24 text-center space-y-8 pt-24">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-sm text-text-secondary font-meta-mono">
-          <span className="w-2 h-2 rounded-full bg-primary" />
-          v0.1 — Kaggle AI Agents Hackathon
-        </div>
-
         <h1
           className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight"
           style={{ fontFamily: "'Space Grotesk', sans-serif" }}

@@ -1,5 +1,7 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useTheme } from "../../lib/ThemeContext";
+import { useAuth } from "../../lib/AuthContext";
 import { useSidebar } from "./Layout";
 
 const pageNames: Record<string, string> = {
@@ -15,7 +17,9 @@ const pageNames: Record<string, string> = {
 export default function TopBar() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
   const { toggle } = useSidebar();
+  const navigate = useNavigate();
   const currentPage = pageNames[location.pathname] ?? "Page";
 
   return (
@@ -55,18 +59,33 @@ export default function TopBar() {
           </span>
         </button>
 
-        <button className="hidden sm:block relative text-on-surface-variant hover:text-text-primary transition-colors duration-150">
+        <button
+          onClick={() => toast("Notifications", { description: "No new notifications" })}
+          className="hidden sm:block relative text-on-surface-variant hover:text-text-primary transition-colors duration-150"
+          aria-label="Notifications"
+        >
           <span className="material-symbols-outlined text-[20px]">notifications</span>
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-status-error" />
         </button>
 
-        <button className="hidden sm:block text-on-surface-variant hover:text-text-primary transition-colors duration-150">
+        <button onClick={() => navigate("/settings")} className="hidden sm:block text-on-surface-variant hover:text-text-primary transition-colors duration-150">
           <span className="material-symbols-outlined text-[20px]">settings</span>
         </button>
 
-        <span className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-text-primary cursor-pointer">
-          U
-        </span>
+        {user ? (
+          <span
+            className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-text-primary cursor-pointer"
+            title={`${user.name ?? user.email}`}
+          >
+            {(user.name ?? user.email ?? "")[0].toUpperCase()}
+          </span>
+        ) : (
+          <button
+            onClick={() => navigate("/login")}
+            className="px-3 py-1 rounded-lg bg-primary text-background text-xs font-semibold hover:opacity-90 transition-all"
+          >
+            Sign In
+          </button>
+        )}
       </div>
     </header>
   );

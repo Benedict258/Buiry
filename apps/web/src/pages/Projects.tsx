@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { getProjects, createProject, deleteProject, type Project } from "../lib/api";
 
 export default function Projects() {
@@ -34,6 +35,7 @@ export default function Projects() {
         setDescription("");
         setShowCreate(false);
         fetchProjects();
+        toast.success("Project created");
       } else {
         setError("Failed to create project. Check your API connection.");
       }
@@ -48,6 +50,7 @@ export default function Projects() {
     if (!confirm(`Delete project "${name}"? This cannot be undone.`)) return;
     await deleteProject(id);
     fetchProjects();
+    toast.success("Project deleted");
   };
 
   return (
@@ -71,7 +74,7 @@ export default function Projects() {
 
       {/* Error */}
       {error && (
-        <div className="px-md py-sm bg-error/10 border border-error/30 rounded text-error text-sm">
+        <div className="px-md py-sm bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
           {error}
         </div>
       )}
@@ -170,7 +173,7 @@ export default function Projects() {
                 </Link>
                 <button
                   onClick={(e) => { e.preventDefault(); handleDelete(project.id, project.name); }}
-                  className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-error transition-all ml-sm"
+                  className="opacity-0 group-hover:opacity-100 text-text-secondary hover:text-status-error transition-all ml-sm"
                   title="Delete project"
                 >
                   <span className="material-icons-round text-[16px]">delete</span>

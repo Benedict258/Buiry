@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getMemory } from "../lib/api";
 import type { BuildContextMemory } from "../lib/types";
 
@@ -21,14 +22,16 @@ function deriveActivityChart(sessions: BuildContextMemory["sessions"]) {
   const todayIdx = new Date().getDay();
   const todayMapped = todayIdx === 0 ? 6 : todayIdx - 1;
   return DAYS.map((label, i) => ({
-    height: `${Math.round((dayCounts[i] / max) * 100) || 0}%`,
+    count: dayCounts[i],
     label,
     highlighted: i === todayMapped,
+    amplitude: Math.round((dayCounts[i] / max) * 60),
   }));
 }
 
 export default function Dashboard() {
   const [memory, setMemory] = useState<BuildContextMemory | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     getMemory().then(setMemory);
@@ -69,6 +72,22 @@ export default function Dashboard() {
 
   const chartBars = deriveActivityChart(memory?.sessions ?? []);
 
+  const hasActivity = chartBars.some((b) => b.count > 0);
+  const points = chartBars.map((bar, i) => {
+    const x = (i / 6) * 600 + 50;
+    const y = bar.amplitude * Math.sin(i * Math.PI / 3.5) + 80;
+    return { x, y: Math.abs(y), label: bar.label, highlighted: bar.highlighted, count: bar.count };
+  });
+  const pathD = points.length > 0
+    ? `M${points[0].x},${points[0].y} ` +
+      points.slice(1).map((p, i) => {
+        const prev = points[i];
+        const cx1 = prev.x + (p.x - prev.x) / 3;
+        const cx2 = prev.x + ((p.x - prev.x) / 3) * 2;
+        return `C${cx1},${prev.y} ${cx2},${p.y} ${p.x},${p.y}`;
+      }).join(' ')
+    : '';
+
   const uniqueAgents = [...new Set((memory?.sessions ?? []).map((s) => s.ai_agent))];
 
   const allIssues = (memory?.sessions ?? []).flatMap((s) => s.known_issues);
@@ -108,13 +127,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-sm mt-lg">
-              <button className="inline-flex items-center gap-xs px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors">
-                <span className="material-icons-round text-[16px]">
-                  play_arrow
-                </span>
-                Resume Work
-              </button>
-              <button className="px-md py-sm border border-border-subtle text-text-secondary font-body-base text-sm rounded hover:bg-surface-elevated transition-colors">
+              <button onClick={() => navigate("/sessions")} className="px-md py-sm border border-border-subtle text-text-secondary font-body-base text-sm rounded hover:bg-surface-elevated transition-colors">
                 View History
               </button>
             </div>
@@ -257,23 +270,40 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="flex items-end gap-sm" style={{ height: "160px" }}>
-            {chartBars.map((bar, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-xs">
-                <div
-                  className={`w-full rounded-t transition-colors ${
-                    bar.highlighted
-                      ? "bg-primary/60 hover:bg-primary/70"
-                      : "bg-primary/20 hover:bg-primary/40"
-                  }`}
-                  style={{ height: bar.height }}
+          <svg viewBox="0 0 700 160" className="w-full" style={{ height: "160px" }}>
+            {!hasActivity && (
+              <line x1="50" y1="80" x2="650" y2="80" stroke="var(--color-outline)" strokeWidth="1" strokeDasharray="4 4" />
+            )}
+            {hasActivity && (
+              <path
+                d={pathD}
+                stroke="var(--color-primary)"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+              />
+            )}
+            {points.map((p, i) => (
+              <g key={i}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={p.highlighted ? 5 : 3}
+                  fill={p.highlighted ? "var(--color-primary)" : hasActivity ? "var(--color-primary)" : "var(--color-outline)"}
+                  opacity={hasActivity ? 0.8 : 0.4}
                 />
-                <span className="text-text-secondary font-meta-mono text-[9px]">
-                  {bar.label}
-                </span>
-              </div>
+                <text
+                  x={p.x}
+                  y="140"
+                  textAnchor="middle"
+                  className="text-[9px] font-meta-mono"
+                  fill={p.highlighted ? "var(--color-primary)" : "var(--color-text-secondary)"}
+                >
+                  {p.label}
+                </text>
+              </g>
             ))}
-          </div>
+          </svg>
           {(!memory?.sessions || memory.sessions.length === 0) && (
             <p className="text-text-secondary font-meta-mono text-xs text-center mt-md">
               No data available
@@ -320,7 +350,7 @@ export default function Dashboard() {
           </div>
 
           <div className="pt-md border-t border-border-subtle">
-            <button className="text-primary text-sm font-body-base hover:text-primary/80 transition-colors">
+            <button onClick={() => navigate("/sessions")} className="text-primary text-sm font-body-base hover:text-primary/80 transition-colors">
               View Decision Log →
             </button>
           </div>
