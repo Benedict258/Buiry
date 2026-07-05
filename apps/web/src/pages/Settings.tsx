@@ -137,10 +137,27 @@ export default function Settings() {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    try {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => fallbackCopy(text));
+    } catch {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.style.position = 'fixed';
+    el.style.opacity = '0';
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -159,6 +176,22 @@ export default function Settings() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-lg">
         {/* Left Column */}
         <div className="col-span-12 md:col-span-8 space-y-lg">
+          {/* Setup Banner — shown when API_KEY is missing */}
+          {!API_KEY && (
+            <section className="bg-status-warning/10 border border-status-warning/30 rounded-lg p-lg space-y-sm">
+              <h2 className="font-section-header text-sm font-semibold text-status-warning">
+                API Key Not Configured
+              </h2>
+              <p className="text-text-secondary text-sm">
+                To manage API keys, set <code className="bg-surface-container px-1 rounded text-[11px]">VITE_BUIRY_API_KEY</code> in your Vercel environment variables.
+              </p>
+              <ol className="list-decimal list-inside text-sm text-text-secondary space-y-1">
+                <li>Go to Vercel Dashboard → Settings → Environment Variables</li>
+                <li>Add <code className="bg-surface-container px-1 rounded text-[11px]">VITE_BUIRY_API_KEY=buiry_sk_live_dev_12345</code></li>
+                <li>Redeploy your Vercel project</li>
+              </ol>
+            </section>
+          )}
           {/* Freshly Created Key Banner */}
           {freshKey && (
             <section className="bg-status-success/10 border border-status-success/30 rounded-lg p-lg space-y-sm">
@@ -219,10 +252,9 @@ export default function Settings() {
               />
               <button
                 onClick={createKey}
-                disabled={!newKeyName.trim() || loading}
                 className="px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Key
+                {loading ? "Loading..." : newKeyName.trim() ? "Create Key" : "Type a name"}
               </button>
             </div>
 
