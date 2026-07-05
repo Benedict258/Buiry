@@ -12,6 +12,7 @@ import { contextRoutes } from './routes/context.js'
 import { docsRoutes } from './routes/docs.js'
 import { keyRoutes } from './routes/keys.js'
 import { cloudSessionRoutes } from './routes/cloud-session.js'
+import { projectRoutes } from './routes/projects.js'
 import { authMiddleware } from './middleware/auth.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { rateLimit } from './middleware/ratelimit.js'
@@ -19,6 +20,7 @@ import { requestLogger } from './middleware/logger.js'
 import { sentryErrorHandler } from './middleware/sentry.js'
 import { config } from './config.js'
 import { initApiKeysTable, bootstrapDefaultKey } from './db/keys.js'
+import { initProjectsTable } from './db/projects.js'
 
 const app = express()
 
@@ -48,6 +50,7 @@ async function checkRedis() {
 
 async function bootstrap() {
   await initApiKeysTable()
+  await initProjectsTable()
   const defaultKey = process.env.API_KEY || 'buiry_sk_live_dev_12345'
   const defaultHash = crypto.createHash('sha256').update(defaultKey).digest('hex')
   const defaultPrefix = defaultKey.slice(0, 12)
@@ -77,6 +80,7 @@ app.use('/api/context', authMiddleware, contextRoutes)
 app.use('/api/docs', authMiddleware, docsRoutes)
 app.use('/api/keys', authMiddleware, keyRoutes)
 app.use('/api/session/cloud', authMiddleware, cloudSessionRoutes)
+app.use('/api/projects', authMiddleware, projectRoutes)
 
 app.use(sentryErrorHandler)
 app.use(errorHandler)

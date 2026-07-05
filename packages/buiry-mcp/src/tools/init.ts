@@ -34,19 +34,19 @@ export async function handleInit(
     };
   }
 
-  const success = await cloud.initProject(args.project_name, args.project_description);
+  const result = await cloud.initProject(args.project_name, args.project_description);
 
   return {
     content: [
       {
         type: "text" as const,
         text: JSON.stringify({
-          success,
+          success: result.success,
           project_name: args.project_name,
-          project_description: args.project_description,
-          files_created: ["Build-Context-Memory.json"],
-          message: success
-            ? `Project "${args.project_name}" initialized in Buiry Cloud.`
+          project_id: result.project_id,
+          files_created: result.files_created || ["Build-Context-Memory.json (local)"],
+          message: result.success
+            ? `Project "${args.project_name}" initialized. View at https://buiry.vercel.app/projects`
             : "Failed to initialize project.",
         }, null, 2),
       },

@@ -27,6 +27,8 @@ import SessionExplorer from "./pages/SessionExplorer";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
 import DatasetBrowser from "./pages/DatasetBrowser";
+import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 
 // Placeholder pages — not yet implemented but routes exist for hackathon demo.
 // These show the planned feature surface area without requiring full implementations.
@@ -55,6 +57,10 @@ export default function App() {
             <Route path="/marketplace" element={<Marketplace />} />
             {/* Settings: configuration page (placeholder) */}
             <Route path="/settings" element={<Settings />} />
+            {/* Projects: list all buiry_init projects */}
+            <Route path="/projects" element={<Projects />} />
+            {/* ProjectDetail: file browser + memory for a specific project */}
+            <Route path="/projects/:id" element={<ProjectDetail />} />
             {/* Documentation: project docs (placeholder) */}
             <Route path="/docs" element={<Documentation />} />
             {/* Onboarding: first-run experience for new users */}

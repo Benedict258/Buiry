@@ -3,6 +3,7 @@ import { useSidebar } from "./Layout";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
+  { to: "/projects", label: "Projects", icon: "folder" },
   { to: "/sessions", label: "Sessions", icon: "analytics" },
   { to: "/datasets", label: "Datasets", icon: "database" },
   { to: "/marketplace", label: "Market", icon: "storefront" },

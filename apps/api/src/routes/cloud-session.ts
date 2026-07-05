@@ -113,6 +113,12 @@ cloudSessionRoutes.post('/end', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'session_id is required' })
   }
 
+  // Inject project_id if provided (from buiry_init)
+  const projectId = session.project_id || req.body.project_id || null
+  if (projectId && !session.project_id) {
+    session.project_id = projectId
+  }
+
   try {
     if (HAS_DB) {
       await query(

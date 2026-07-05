@@ -273,12 +273,26 @@ export class CloudClient {
 
   // ─── Init ──────────────────────────────────────────────────
 
-  async initProject(projectName: string, projectDescription: string): Promise<boolean> {
-    const cloudResult = await this.apiPost("/api/workspace", {
+  async initProject(projectName: string, projectDescription: string): Promise<{
+    success: boolean;
+    project_id?: string;
+    files_created?: string[];
+  }> {
+    // Try cloud — creates project + ALL init files in one call
+    const cloudResult = await this.apiPost<{
+      project?: { id: string; name: string };
+      files_created?: string[];
+    }>("/api/projects", {
       name: projectName,
       description: projectDescription,
     });
-    if (cloudResult) return true;
+    if (cloudResult?.project) {
+      return {
+        success: true,
+        project_id: cloudResult.project.id,
+        files_created: cloudResult.files_created,
+      };
+    }
 
     // Fallback to local file
     const memory: BuildContextMemory = {
@@ -291,7 +305,7 @@ export class CloudClient {
       summary: `Project ${projectName} initialized`,
     };
     await this.writeLocalMemory(memory);
-    return true;
+    return { success: true };
   }
 
   // ─── Sync ──────────────────────────────────────────────────
