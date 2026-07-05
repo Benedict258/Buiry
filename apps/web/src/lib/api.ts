@@ -21,8 +21,41 @@ async function apiRequest<T>(path: string, body?: unknown, method?: string): Pro
   }
 }
 
-export async function getMemory(): Promise<BuildContextMemory | null> {
-  return apiRequest<BuildContextMemory>('/api/session/start', { projectId: 'buiry', agentId: 'web' });
+export async function getMemory(): Promise<BuildContextMemory> {
+  const raw = await apiRequest<Record<string, any>>('/api/session/start', { projectId: 'buiry', agentId: 'web' });
+
+  const sessions = (raw?.sessions || raw?.recentSessions || raw?.last_5_sessions || []).map((s: any) => ({
+    session_id: s.session_id || s.id || '',
+    timestamp: s.timestamp || '',
+    ai_agent: s.ai_agent || '',
+    current_phase: s.current_phase || '',
+    progress: s.progress || { completed: [], in_progress: [], blocked: [] },
+    last_session_summary: s.last_session_summary || '',
+    changes_made: s.changes_made || [],
+    file_module_map: s.file_module_map || [],
+    decisions_log: (s.decisions_log || s.decisions || []).map((d: any) =>
+      typeof d === 'string' ? { decision: d, reason: '', alternatives_considered: '' } : d
+    ),
+    known_issues: (s.known_issues || []).map((i: any) =>
+      typeof i === 'string' ? { issue: i, severity: 'medium', status: 'open' } : i
+    ),
+    errors_encountered: s.errors_encountered || [],
+    next_steps: s.next_steps || [],
+    dataset_signals: s.dataset_signals || [],
+  }));
+
+  return {
+    project_identity: raw?.project_identity || { name: 'Buiry', description: '', version: '', stack: [], architecture_summary: '', repo_url: '', created_at: '', buiry_version: '' },
+    config: raw?.config || { max_sessions_in_context: 100, auto_summarize_after: 50, dataset_capture: false, dataset_domain: '' },
+    summary: {
+      current_phase: raw?.summary?.current_phase || raw?.summary || '',
+      overall_status: raw?.summary?.overall_status || '',
+      last_updated: raw?.summary?.last_updated || '',
+      total_sessions: raw?.summary?.total_sessions || sessions.length,
+      open_issues: raw?.summary?.open_issues || 0,
+    },
+    sessions,
+  };
 }
 
 export async function getSessions(): Promise<SessionObject[]> {

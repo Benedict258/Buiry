@@ -53,8 +53,8 @@ export default function Dashboard() {
 
   const recentDecisions = memory?.sessions
     .flatMap((s) =>
-      s.decisions_log.map((d) => ({
-        id: `#${s.session_id.split("_")[1]}`,
+      (s.decisions_log || []).map((d) => ({
+        id: `#${(s.session_id || '').split("_")[1] || '?'}`,
         title: d.decision,
         time: new Date(s.timestamp).toLocaleTimeString([], {
           hour: "2-digit",
@@ -90,9 +90,9 @@ export default function Dashboard() {
 
   const uniqueAgents = [...new Set((memory?.sessions ?? []).map((s) => s.ai_agent))];
 
-  const allIssues = (memory?.sessions ?? []).flatMap((s) => s.known_issues);
-  const highPrio = allIssues.filter((i) => i.severity === "high").length;
-  const lowPrio = allIssues.filter((i) => i.severity === "low").length;
+  const allIssues = (memory?.sessions ?? []).flatMap((s) => (s.known_issues || []));
+  const highPrio = allIssues.filter((i: any) => i?.severity === "high").length;
+  const lowPrio = allIssues.filter((i: any) => i?.severity === "low").length;
 
   return (
     <div className="p-lg space-y-lg max-w-[1200px] mx-auto">
@@ -116,9 +116,9 @@ export default function Dashboard() {
               </div>
 
               <h1 className="text-headline-lg font-headline-lg font-bold text-text-primary mt-sm">
-                {activeSession
-                  ? `Session #${activeSession.session_id.split("_")[1]}: ${activeSession.ai_agent}`
-                  : "No Active Session"}
+              {activeSession
+                ? `Session #${(activeSession.session_id || '').split("_")[1] || '?'}: ${activeSession.ai_agent}`
+                : "No Active Session"}
               </h1>
 
               <p className="text-text-secondary text-body-base max-w-[480px]">
