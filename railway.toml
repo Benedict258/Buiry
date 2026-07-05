@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs-20_x"]
+nixPkgs = ["nodejs-20_x", "python312"]
 
 [phases.build]
-cmds = ["cd apps/api && npm install && npm run build"]
+cmds = ["cd apps/api && npm install && npm run build", "cd packages/adk-agents && pip install -r requirements.txt"]
 
 [start]
-cmd = "node apps/api/dist/index.js"
+cmd = "bash apps/api/start.sh"

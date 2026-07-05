@@ -65,11 +65,19 @@ async function bootstrap() {
   await initUsersTable()
   await initTokensTable()
   await initUserSettingsTable()
+  // Always seed the default dev key
+  const devKey = 'buiry_sk_live_dev_12345'
+  const devHash = crypto.createHash('sha256').update(devKey).digest('hex')
+  const devPrefix = devKey.slice(0, 12)
+  await bootstrapDefaultKey(devHash, devPrefix)
+  // Also seed API_KEY from env if different
+  const envKey = process.env.API_KEY
+  if (envKey && envKey !== devKey) {
+    const envHash = crypto.createHash('sha256').update(envKey).digest('hex')
+    const envPrefix = envKey.slice(0, 12)
+    await bootstrapDefaultKey(envHash, envPrefix)
+  }
   await initSessionIsolation()
-  const defaultKey = process.env.API_KEY || 'buiry_sk_live_dev_12345'
-  const defaultHash = crypto.createHash('sha256').update(defaultKey).digest('hex')
-  const defaultPrefix = defaultKey.slice(0, 12)
-  await bootstrapDefaultKey(defaultHash, defaultPrefix)
 }
 
 async function initSessionIsolation() {
@@ -92,11 +100,19 @@ bootstrap().catch(console.error)
 
 app.post('/api/bootstrap-keys', async (req, res) => {
   try {
-    const defaultKey = process.env.API_KEY || 'buiry_sk_live_dev_12345'
-    const defaultHash = crypto.createHash('sha256').update(defaultKey).digest('hex')
-    const defaultPrefix = defaultKey.slice(0, 12)
     await initApiKeysTable()
-    await bootstrapDefaultKey(defaultHash, defaultPrefix)
+    // Always seed the default dev key
+    const devKey = 'buiry_sk_live_dev_12345'
+    const devHash = crypto.createHash('sha256').update(devKey).digest('hex')
+    const devPrefix = devKey.slice(0, 12)
+    await bootstrapDefaultKey(devHash, devPrefix)
+    // Also seed the API_KEY env var if different
+    const envKey = process.env.API_KEY
+    if (envKey && envKey !== devKey) {
+      const envHash = crypto.createHash('sha256').update(envKey).digest('hex')
+      const envPrefix = envKey.slice(0, 12)
+      await bootstrapDefaultKey(envHash, envPrefix)
+    }
     const pool = getPool()
     const client = await pool.connect()
     const result = await client.query('SELECT COUNT(*) as count FROM api_keys')
@@ -104,7 +120,7 @@ app.post('/api/bootstrap-keys', async (req, res) => {
     res.json({
       success: true,
       keys_count: parseInt(result.rows[0]?.count || '0'),
-      default_key: defaultPrefix + '***',
+      default_key: devPrefix + '***',
     })
   } catch (err) {
     console.error('Bootstrap failed:', err)

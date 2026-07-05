@@ -21,7 +21,7 @@ export class DataAgent {
     this.threshold = new ThresholdCheck({ minSampleSize: config?.minSampleSize ?? 10 })
     this.aggregator = new Aggregator()
     this.categorizer = new Categorizer(config?.categorizer)
-    this.adkUrl = config?.adkUrl ?? 'http://localhost:8765'
+    this.adkUrl = config?.adkUrl ?? process.env.ADK_SERVICE_URL ?? 'http://localhost:8765'
   }
 
   /**
