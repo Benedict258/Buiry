@@ -52,7 +52,8 @@ export async function readMemory(
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (err: any) {
+    console.error('[MCP] JSON parse failed:', err instanceof Error ? err.message : String(err))
     throw new Error(`${MEMORY_FILENAME} is not valid JSON`);
   }
   // Validate against the Zod schema — catches missing fields, wrong types, etc.

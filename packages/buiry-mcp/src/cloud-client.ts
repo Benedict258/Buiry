@@ -67,7 +67,8 @@ export class CloudClient {
       });
       if (!res.ok) return null;
       return (await res.json()) as T;
-    } catch {
+    } catch (err: any) {
+      console.error('[MCP] API post failed:', err?.message || String(err))
       this.isCloudAvailable = false;
       return null;
     }
@@ -79,7 +80,8 @@ export class CloudClient {
     try {
       const raw = await readFile(this.memoryPath, "utf-8");
       return JSON.parse(raw);
-    } catch {
+    } catch (err: any) {
+      console.warn('[MCP] readLocalMemory failed, using defaults:', err?.message || String(err))
       return {
         project_identity: { name: "Buiry", description: "MCP-first AI workspace" },
         sessions: [],
@@ -93,7 +95,9 @@ export class CloudClient {
     try {
       const json = JSON.stringify(memory, null, 2) + "\n";
       await writeFile(this.memoryPath, json, "utf-8");
-    } catch {}
+    } catch (err: any) {
+      console.error('[MCP] writeLocalMemory failed:', err?.message || String(err))
+    }
   }
 
   // ─── Session Lifecycle ─────────────────────────────────────
@@ -162,7 +166,9 @@ export class CloudClient {
         if (idx >= 0) memory.sessions[idx] = session;
         else memory.sessions.push(session);
         await this.writeLocalMemory(memory);
-      } catch {}
+      } catch (err: any) {
+        console.warn('[MCP] endSession local cache update failed:', err?.message || String(err))
+      }
       return { success: true, session_id: session.session_id, source: "cloud" };
     }
 
@@ -214,7 +220,8 @@ export class CloudClient {
         await this.writeLocalMemory(memory);
       }
       return true;
-    } catch {
+    } catch (err: any) {
+      console.error('[MCP] logDecision local fallback failed:', err?.message || String(err))
       return false;
     }
   }
@@ -236,7 +243,8 @@ export class CloudClient {
         await this.writeLocalMemory(memory);
       }
       return true;
-    } catch {
+    } catch (err: any) {
+      console.error('[MCP] flagIssue local fallback failed:', err?.message || String(err))
       return false;
     }
   }

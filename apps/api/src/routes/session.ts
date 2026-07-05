@@ -9,7 +9,7 @@ import { query } from '../db/pool.js'
 export const sessionRoutes = Router()
 
 const memwal = new MemWalClient()
-memwal.connect().catch(() => {})
+memwal.connect().catch((err) => { console.warn('[Session] MemWal connect failed:', err?.message || err) })
 
 const SESSION_FILE = join(process.cwd(), 'data', 'Build-Context-Memory.json')
 const HAS_DB = !!process.env.DATABASE_URL
@@ -50,7 +50,8 @@ async function readContext(): Promise<BuildContextMemory> {
     }
     const raw = await readFile(SESSION_FILE, 'utf-8')
     return JSON.parse(raw)
-  } catch {
+  } catch (err: any) {
+    console.warn('[Session] File read failed:', err?.message || err)
     return { project_identity: {}, sessions: [] }
   }
 }
@@ -62,13 +63,16 @@ async function writeContext(data: BuildContextMemory): Promise<void> {
 }
 
 sessionRoutes.post('/start', async (req: Request, res: Response) => {
+  const apiKey = (req as any).apiKey
   if (HAS_DB) {
     try {
       const result = await query(
         `SELECT session_id, data, created_at
          FROM sessions
+         WHERE api_key_id = $1
          ORDER BY created_at DESC
-         LIMIT 5`
+         LIMIT 5`,
+        [apiKey?.id || null]
       )
       const recentSessions = result.rows.map((row: Record<string, unknown>) => ({
         id: row.session_id as string,
@@ -113,21 +117,31 @@ sessionRoutes.post('/end', async (req: Request, res: Response) => {
     ...parsed.data,
   }
 
+  const apiKey = (req as any).apiKey
+  let dbStored = !HAS_DB
+
   if (HAS_DB) {
     try {
       await query(
-        `INSERT INTO sessions (session_id, agent_id, current_phase, data)
-         VALUES ($1, $2, $3, $4)`,
-        [session.id, null, null, JSON.stringify(session)]
+        `INSERT INTO sessions (session_id, agent_id, current_phase, api_key_id, data)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [session.id, null, null, apiKey?.id || null, JSON.stringify(session)]
       )
+      dbStored = true
     } catch (err) {
       console.warn('[Session] DB insert failed:', err)
     }
   }
 
-  const context = await readContext()
-  context.sessions.push(session)
-  await writeContext(context)
+  let fileStored = false
+  try {
+    const context = await readContext()
+    context.sessions.push(session)
+    await writeContext(context)
+    fileStored = true
+  } catch (err: any) {
+    console.warn('[Session] File cache write failed:', err?.message || err)
+  }
 
   if (memwal.isAvailable()) {
     try {
@@ -137,19 +151,24 @@ sessionRoutes.post('/end', async (req: Request, res: Response) => {
     }
   }
 
+  if (!dbStored && !fileStored) {
+    return res.status(503).json({ error: 'Storage unavailable' })
+  }
+
   res.json({ sessionId: session.id, timestamp: session.timestamp })
 })
 
 sessionRoutes.get('/:id', async (req: Request, res: Response) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+  const apiKey = (req as any).apiKey
 
   if (HAS_DB) {
     try {
       const result = await query(
         `SELECT session_id, data, created_at
          FROM sessions
-         WHERE session_id = $1`,
-        [id]
+         WHERE session_id = $1 AND api_key_id = $2`,
+        [id, apiKey?.id || null]
       )
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Session not found' })
@@ -170,6 +189,7 @@ sessionRoutes.get('/:id', async (req: Request, res: Response) => {
 sessionRoutes.post('/search', async (req: Request, res: Response) => {
   const { query: q } = req.body as { query?: string }
   if (!q) return res.status(400).json({ error: 'query is required' })
+  const apiKey = (req as any).apiKey
 
   if (memwal.isAvailable()) {
     try {
@@ -187,10 +207,10 @@ sessionRoutes.post('/search', async (req: Request, res: Response) => {
       const result = await query(
         `SELECT session_id, data, created_at
          FROM sessions
-         WHERE data::text ILIKE '%' || $1 || '%'
+         WHERE api_key_id = $1 AND (data::text ILIKE '%' || $2 || '%')
          ORDER BY created_at DESC
          LIMIT 20`,
-        [q]
+        [apiKey?.id || null, q]
       )
       const results = result.rows.map((row: Record<string, unknown>) => ({
         id: row.session_id,

@@ -38,8 +38,8 @@ function mapSession(s: SessionObject): SessionCardData {
         ? "COMPLETED"
         : "ARCHIVED";
 
-  const inputTokens = `${(s.changes_made.length * 3.2 + 8).toFixed(1)}k`;
-  const outputTokens = `${(s.changes_made.length * 1.1 + 1.2).toFixed(1)}k`;
+  const inputTokens = "—";
+  const outputTokens = "—";
 
   return {
     id: s.session_id.split("_")[1],

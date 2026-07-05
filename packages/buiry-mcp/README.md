@@ -1,83 +1,47 @@
 # @buiry/mcp
 
-MCP server for Buiry — persistent AI agent memory.
-
-## What it does
-
-Provides 7 MCP tools that give AI coding agents persistent memory across sessions:
-
-| Tool | Description |
-|------|-------------|
-| `buiry_start_session` | Read session history (last 5 sessions) at session start |
-| `buiry_end_session` | Save session context when ending a session |
-| `buiry_log_decision` | Record architectural/design decisions mid-session |
-| `buiry_flag_issue` | Flag known issues for future agents |
-| `buiry_get_context` | Search across all sessions for relevant context |
-| `buiry_init` | Initialize Buiry file structure for a new project |
-| `buiry_generate_docs` | Auto-generate PRD, Architecture, or Dev Plan from history |
+MCP server for Buiry — persistent build memory across AI coding sessions.
 
 ## Install
 
-```bash
-# Global install
 npm install -g @buiry/mcp
-
-# Or use directly with npx
+# or
 npx @buiry/mcp
-```
 
-## Configuration
+## Tools (9)
 
-### Claude Code
+| Tool | Description |
+|------|-------------|
+| buiry_start_session | Load project context and last 5 sessions |
+| buiry_end_session | Save completed session to memory |
+| buiry_log_decision | Record an architectural decision mid-session |
+| buiry_flag_issue | Flag a known issue for future sessions |
+| buiry_get_context | Search across all session history |
+| buiry_init | Initialize a new Buiry project |
+| buiry_generate_docs | Generate PRD/Architecture/DevPlan docs |
+| buiry_execute | Universal intent router — natural language → tool |
+| buiry_sync | Push local sessions to Buiry cloud dashboard |
 
-Add to your MCP settings (`~/.claude/settings.json` or project `.claude/settings.json`):
+## Connect to Claude Code
 
+Add to your `.mcp.json`:
 ```json
 {
   "mcpServers": {
     "buiry": {
       "command": "npx",
-      "args": ["-y", "@buiry/mcp"]
+      "args": ["-y", "@buiry/mcp"],
+      "env": {
+        "BUIRY_API_KEY": "<your-api-key>"
+      }
     }
   }
 }
 ```
 
-### Cursor
+## Connect to Cursor
 
-Add to `.cursor/mcp.json` in your project root:
-
-```json
-{
-  "mcpServers": {
-    "buiry": {
-      "command": "npx",
-      "args": ["-y", "@buiry/mcp"]
-    }
-  }
-}
-```
-
-### GitHub Copilot
-
-Add to `.github/copilot/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "buiry": {
-      "command": "npx",
-      "args": ["-y", "@buiry/mcp"]
-    }
-  }
-}
-```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BUIRY_PROJECT_ROOT` | Override project root directory | `process.cwd()` |
+Same JSON block in Cursor's MCP settings.
 
 ## License
 

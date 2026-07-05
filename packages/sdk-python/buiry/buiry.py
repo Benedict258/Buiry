@@ -9,6 +9,8 @@ from __future__ import annotations
 import time
 import uuid
 import hashlib
+import re
+import logging
 from typing import Any, Optional, Union
 from datetime import datetime, timezone
 
@@ -115,6 +117,23 @@ def _detect_provider(client: Any) -> str:
     return "generic"
 
 
+PII_PATTERNS = [
+    re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),
+    re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"),
+    re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+    re.compile(r"\b[A-Z][a-z]+\s[A-Z][a-z]+\b"),
+    re.compile(r"\d+\s+[A-Za-z]+\s+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)\b", re.IGNORECASE),
+    re.compile(r"\+\d{1,3}[\s-]?\d{3,4}[\s-]?\d{3,4}[\s-]?\d{3,4}\b"),
+]
+
+
+def _strip_pii(text: str) -> str:
+    result = text
+    for pattern in PII_PATTERNS:
+        result = pattern.sub("[REDACTED]", result)
+    return result
+
+
 # ─── Main Buiry Class ──────────────────────────────────────
 
 class Buiry:
@@ -139,6 +158,7 @@ class Buiry:
         self.project_id = project_id
         self.sample_rate = sample_rate
         self._interactions: list[dict[str, Any]] = []
+        self.failed_captures = 0
         self._client = httpx.Client(
             headers={"X-Api-Key": self.api_key, "Content-Type": "application/json"},
             timeout=30.0,
@@ -217,7 +237,8 @@ class Buiry:
             )
             resp.raise_for_status()
             return resp.json().get("datasets", [])
-        except Exception:
+        except Exception as e:
+            logging.warning(f"[Buiry SDK] get_datasets failed: {e}")
             return []
 
     def get_sessions(self, limit: int = 10) -> list[dict[str, Any]]:
@@ -236,13 +257,17 @@ class Buiry:
             )
             resp.raise_for_status()
             return resp.json().get("sessions", [])
-        except Exception:
+        except Exception as e:
+            logging.warning(f"[Buiry SDK] get_sessions failed: {e}")
             return []
 
     def _log_interaction(self, interaction: dict[str, Any]) -> None:
         """Log an interaction internally."""
         import random
         if random.random() <= self.sample_rate:
+            for key in ("input", "output", "prompt", "response", "content"):
+                if key in interaction and isinstance(interaction[key], str):
+                    interaction[key] = _strip_pii(interaction[key])
             self._interactions.append(interaction)
 
     def flush(self) -> int:
@@ -263,8 +288,9 @@ class Buiry:
                 )
                 if resp.status_code in (200, 201):
                     count += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logging.warning(f"[Buiry SDK] Flush interaction failed: {e}")
+                self.failed_captures += 1
 
         self._interactions.clear()
         return count

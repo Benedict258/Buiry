@@ -1,61 +1,52 @@
 # Buiry ADK Agents
 
-Multi-agent coding team built with Google ADK, backed by Buiry MCP tools for persistent memory.
+AI agents for the Buiry platform — built with Google ADK and Gemini 2.5 Flash.
+
+## Install
+
+pip install -r requirements.txt
+
+## Usage
+
+### As an ADK Skill
+```python
+from buiry import BuirySkill
+
+skill = BuirySkill(api_key="buiry_sk_...")
+context = skill.buiry_start_session()
+skill.buiry_remember("Added PostgreSQL connection pool")
+```
+
+### As standalone agents
+```bash
+python3 agents/context_guardian.py     # PII detection
+python3 agents/dataset_generator.py    # Generate training datasets
+python3 agents/session_analyst.py      # Pattern detection
+python3 agents/quality_auditor.py      # Dataset quality validation
+python3 agents/contract_guardian.py    # On-chain attestation
+python3 agents/intent_router.py        # Natural language → MCP tools
+python3 agents/buiry_cli_agent.py      # CLI agent wrapper
+```
+
+### Bridge Server (for TypeScript pipeline)
+```bash
+python3 server.py --port 8765
+```
 
 ## Agents
 
-| Agent | Role |
-|---|---|
-| **CoordinatorAgent** | Orchestrates session lifecycle, distributes tasks, resolves conflicts |
-| **DevAgent** | Reads context, plans implementation, executes code changes |
-| **ReviewAgent** | Reviews changes, cross-checks against known issues, flags risks |
+| Agent | File | Function |
+|-------|------|----------|
+| Context Guardian | `agents/context_guardian.py` | Two-pass PII detection (regex + Gemini) |
+| Dataset Generator | `agents/dataset_generator.py` | Classify interactions into labeled datasets |
+| Session Analyst | `agents/session_analyst.py` | Pattern detection and recommendations |
+| Quality Auditor | `agents/quality_auditor.py` | Dataset validation and model cards |
+| Contract Guardian | `agents/contract_guardian.py` | Sui blockchain attestation |
+| Intent Router | `agents/intent_router.py` | Natural language → MCP tool |
+| Buiry CLI Agent | `agents/buiry_cli_agent.py` | Agents CLI wrapper |
 
-## How It Works
+## Configuration
 
-```
-User request
-    │
-    ▼
-┌─────────────────┐
-│ CoordinatorAgent │◄── buiry_start_session (load context)
-└────────┬────────┘
-         │ delegates
-    ┌────┴────┐
-    ▼         ▼
-┌────────┐ ┌────────┐
-│ DevAgent│ │ReviewAgent│
-└───┬────┘ └───┬────┘
-    │          │
-    └────┬─────┘
-         ▼
-┌─────────────────┐
-│ CoordinatorAgent │──► buiry_end_session (persist memory)
-└─────────────────┘
-```
+Set `GOOGLE_API_KEY` in `.env` or `GOOGLE_GENAI_API_KEY` for Gemini access.
 
-## Buiry MCP Tools
-
-The agents call these MCP tools via stdio:
-
-- `buiry_start_session` — returns project context, last 5 sessions, next_steps, open_issues
-- `buiry_end_session` — validates and appends a new session to Build-Context-Memory.json
-- `buiry_get_context` — keyword search across all past sessions
-
-## Prerequisites
-
-- Python 3.10+
-- Google ADK (`pip install google-adk>=0.3.0`)
-- Gemini API key (`export GOOGLE_GENAI_API_KEY=your_key`)
-- Buiry MCP server running (`packages/buiry-mcp`)
-
-## Running
-
-```bash
-cd packages/adk-agents
-pip install -r requirements.txt
-adk run agents.orchestrator
-```
-
-## Architecture
-
-SequentialAgent runs CoordinatorAgent → DevAgent → ReviewAgent in order. Each agent is a Gemini 2.0 Flash instance with role-specific instructions. MCP tools for Buiry memory are connected at runtime via stdio transport.
+Set `BUIRY_API_KEY` for Buiry backend access (get from https://buiry.vercel.app/settings).

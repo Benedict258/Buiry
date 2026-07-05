@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mysten/memwal": "^0.0.2",
+    "@mysten/seal": "^1.2.3",
     "@mysten/sui": "^2.20.1",
     "@mysten/walrus": "^1.2.3",
     "@types/pg": "^8.20.0",

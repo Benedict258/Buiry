@@ -83,8 +83,19 @@ export interface Dataset {
   badge: string;
 }
 
-export async function getDatasets(): Promise<Dataset[]> {
-  return (await apiRequest<Dataset[]>('/api/datasets')) ?? [];
+export async function getDatasets(): Promise<{ datasets: Dataset[]; storageError?: boolean }> {
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (API_KEY) headers['x-api-key'] = API_KEY;
+    const res = await fetch(`${API_URL}/api/datasets`, { headers });
+    const body = await res.json();
+    if (body.fallback) {
+      return { datasets: [], storageError: true };
+    }
+    return { datasets: body.datasets ?? [] };
+  } catch {
+    return { datasets: [], storageError: true };
+  }
 }
 
 export interface HealthStatus {

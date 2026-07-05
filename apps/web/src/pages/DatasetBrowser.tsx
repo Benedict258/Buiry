@@ -3,14 +3,22 @@ import { getDatasets, type Dataset } from "../lib/api";
 
 export default function DatasetBrowser() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [storageError, setStorageError] = useState(false);
 
   const fetchDatasets = () => {
+    setStorageError(false);
     setDatasets([]);
-    getDatasets().then(setDatasets);
+    getDatasets().then(({ datasets, storageError }) => {
+      setDatasets(datasets);
+      setStorageError(!!storageError);
+    }).catch(() => setStorageError(true));
   };
 
   useEffect(() => {
-    getDatasets().then(setDatasets);
+    getDatasets().then(({ datasets, storageError }) => {
+      setDatasets(datasets);
+      setStorageError(!!storageError);
+    }).catch(() => setStorageError(true));
   }, []);
 
   useEffect(() => {
@@ -56,7 +64,19 @@ export default function DatasetBrowser() {
       </header>
 
       {/* ── Dataset Grid ────────────────────────────────────────────── */}
-      {datasets.length === 0 ? (
+      {storageError ? (
+        <div className="bg-surface-card border border-border-subtle rounded-lg p-xl flex flex-col items-center justify-center py-2xl">
+          <span className="material-icons-round text-text-secondary text-[48px] mb-md">
+            storage
+          </span>
+          <p className="text-headline-sm font-headline-sm font-semibold text-text-primary mb-xs">
+            Storage unavailable
+          </p>
+          <p className="text-text-secondary text-sm font-body-base">
+            Datasets will appear once connection is restored.
+          </p>
+        </div>
+      ) : datasets.length === 0 ? (
         <div className="bg-surface-card border border-border-subtle rounded-lg p-xl flex flex-col items-center justify-center py-2xl">
           <span className="material-icons-round text-text-secondary text-[48px] mb-md">
             folder_open

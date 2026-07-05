@@ -24,6 +24,9 @@ import { config } from './config.js'
 import { initApiKeysTable, bootstrapDefaultKey } from './db/keys.js'
 import { initProjectsTable } from './db/projects.js'
 import { getPool } from './db/pool.js'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 
 const app = express()
 
@@ -40,7 +43,8 @@ async function checkPostgres() {
     const result = await client.query('SELECT 1 as ok')
     client.release()
     return result.rows[0]?.ok === 1 ? 'connected' : 'error'
-  } catch {
+  } catch (err: any) {
+    console.warn('[API] PostgreSQL health check failed:', err?.message || err)
     return 'disconnected'
   }
 }
@@ -49,7 +53,8 @@ async function checkRedis() {
   try {
     // Try to ping Redis
     return 'connected'
-  } catch {
+  } catch (err: any) {
+    console.warn('[API] Redis health check failed:', err?.message || err)
     return 'disconnected'
   }
 }
@@ -60,10 +65,27 @@ async function bootstrap() {
   await initUsersTable()
   await initTokensTable()
   await initUserSettingsTable()
+  await initSessionIsolation()
   const defaultKey = process.env.API_KEY || 'buiry_sk_live_dev_12345'
   const defaultHash = crypto.createHash('sha256').update(defaultKey).digest('hex')
   const defaultPrefix = defaultKey.slice(0, 12)
   await bootstrapDefaultKey(defaultHash, defaultPrefix)
+}
+
+async function initSessionIsolation() {
+  try {
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = dirname(__filename)
+    const migration = readFileSync(
+      join(__dirname, 'db', 'migrations', '002_session_isolation.sql'),
+      'utf-8'
+    )
+    const pool = getPool()
+    await pool.query(migration)
+    console.log('[Init] Session isolation migration applied')
+  } catch (err: any) {
+    console.warn('[Init] Session isolation migration failed:', err?.message || err)
+  }
 }
 
 bootstrap().catch(console.error)

@@ -29,7 +29,8 @@ async function readFileCache(): Promise<{ project_identity: any; sessions: any[]
   await ensureFile()
   try {
     return JSON.parse(await readFile(SESSION_FILE, 'utf-8'))
-  } catch {
+  } catch (err: any) {
+    console.warn('[CloudSession] File cache read failed:', err?.message || err)
     return { project_identity: {}, sessions: [] }
   }
 }
@@ -45,11 +46,13 @@ async function writeFileCache(data: { project_identity: any; sessions: any[] }):
 
 cloudSessionRoutes.post('/start', async (req: Request, res: Response) => {
   const mcpSession = req.body
+  const apiKey = (req as any).apiKey
 
   try {
     if (HAS_DB) {
       const result = await query(
-        `SELECT data FROM sessions ORDER BY created_at DESC LIMIT 5`
+        `SELECT data FROM sessions WHERE api_key_id = $1 ORDER BY created_at DESC LIMIT 5`,
+        [apiKey?.id || null]
       )
       const last5 = result.rows.map(r => r.data as Record<string, any>)
       const openIssues: string[] = []
@@ -60,6 +63,11 @@ cloudSessionRoutes.post('/start', async (req: Request, res: Response) => {
       }
       const uniqueIssues = [...new Set(openIssues)]
 
+      const countResult = await query(
+        'SELECT COUNT(*) as c FROM sessions WHERE api_key_id = $1',
+        [apiKey?.id || null]
+      )
+
       return res.json({
         project_identity: {
           name: mcpSession.project_identity?.name || 'Buiry',
@@ -67,7 +75,7 @@ cloudSessionRoutes.post('/start', async (req: Request, res: Response) => {
           created: mcpSession.project_identity?.created || new Date().toISOString(),
         },
         summary: {
-          total_sessions: (await query('SELECT COUNT(*) as c FROM sessions')).rows[0]?.c || 0,
+          total_sessions: countResult.rows[0]?.c || 0,
           last_updated: last5[0]?.timestamp || new Date().toISOString(),
           active_phase: last5[0]?.current_phase || 'planning',
         },
@@ -113,25 +121,29 @@ cloudSessionRoutes.post('/end', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'session_id is required' })
   }
 
-  // Inject project_id if provided (from buiry_init)
+  const apiKey = (req as any).apiKey
   const projectId = session.project_id || req.body.project_id || null
   if (projectId && !session.project_id) {
     session.project_id = projectId
   }
 
-  try {
-    if (HAS_DB) {
+  let dbStored = !HAS_DB
+
+  if (HAS_DB) {
+    try {
       await query(
-        `INSERT INTO sessions (session_id, agent_id, current_phase, data)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (session_id) DO UPDATE SET data = $4, current_phase = $3, updated_at = NOW()`,
-        [session.session_id, session.ai_agent || null, session.current_phase || null, JSON.stringify(session)]
+        `INSERT INTO sessions (session_id, agent_id, current_phase, api_key_id, data)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (session_id) DO UPDATE SET data = $5, current_phase = $3, updated_at = NOW()`,
+        [session.session_id, session.ai_agent || null, session.current_phase || null, apiKey?.id || null, JSON.stringify(session)]
       )
+      dbStored = true
+    } catch (err) {
+      console.warn('[CloudSession] DB end failed:', err)
     }
-  } catch (err) {
-    console.warn('[CloudSession] DB end failed:', err)
   }
 
+  let fileStored = false
   try {
     const cache = await readFileCache()
     const idx = cache.sessions.findIndex((s: any) => s.session_id === session.session_id)
@@ -141,8 +153,13 @@ cloudSessionRoutes.post('/end', async (req: Request, res: Response) => {
       cache.sessions.push(session)
     }
     await writeFileCache(cache)
+    fileStored = true
   } catch (err) {
     console.warn('[CloudSession] File cache write failed:', err)
+  }
+
+  if (!dbStored && !fileStored) {
+    return res.status(503).json({ error: 'Storage unavailable' })
   }
 
   res.json({
@@ -157,6 +174,7 @@ cloudSessionRoutes.post('/end', async (req: Request, res: Response) => {
 
 cloudSessionRoutes.post('/decision', async (req: Request, res: Response) => {
   const { session_id, timestamp, decision, rationale, alternatives_considered } = req.body
+  const apiKey = (req as any).apiKey
 
   if (!session_id) return res.status(400).json({ error: 'session_id is required' })
   if (!decision) return res.status(400).json({ error: 'decision is required' })
@@ -165,15 +183,18 @@ cloudSessionRoutes.post('/decision', async (req: Request, res: Response) => {
 
   try {
     if (HAS_DB) {
-      const result = await query('SELECT data FROM sessions WHERE session_id = $1', [session_id])
+      const result = await query(
+        'SELECT data FROM sessions WHERE session_id = $1 AND api_key_id = $2',
+        [session_id, apiKey?.id || null]
+      )
       if (result.rows.length > 0) {
         const existing = result.rows[0].data as Record<string, any>
         const decisions = existing.decisions_log || []
         decisions.push(entry)
         existing.decisions_log = decisions
         await query(
-          'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2',
-          [JSON.stringify(existing), session_id]
+          'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2 AND api_key_id = $3',
+          [JSON.stringify(existing), session_id, apiKey?.id || null]
         )
       }
     }
@@ -190,7 +211,9 @@ cloudSessionRoutes.post('/decision', async (req: Request, res: Response) => {
       session.decisions_log.push(entry)
       await writeFileCache(cache)
     }
-  } catch {}
+  } catch (err: any) {
+    console.warn('[CloudSession] Decision file cache write failed:', err?.message || err)
+  }
 
   res.json({ success: true, session_id, decisions_logged: (req.body.entry ? 1 : 0) + 1 })
 })
@@ -200,13 +223,17 @@ cloudSessionRoutes.post('/decision', async (req: Request, res: Response) => {
 
 cloudSessionRoutes.post('/issue', async (req: Request, res: Response) => {
   const { session_id, issue } = req.body
+  const apiKey = (req as any).apiKey
 
   if (!session_id) return res.status(400).json({ error: 'session_id is required' })
   if (!issue) return res.status(400).json({ error: 'issue is required' })
 
   try {
     if (HAS_DB) {
-      const result = await query('SELECT data FROM sessions WHERE session_id = $1', [session_id])
+      const result = await query(
+        'SELECT data FROM sessions WHERE session_id = $1 AND api_key_id = $2',
+        [session_id, apiKey?.id || null]
+      )
       if (result.rows.length > 0) {
         const existing = result.rows[0].data as Record<string, any>
         const issues = existing.known_issues || []
@@ -214,8 +241,8 @@ cloudSessionRoutes.post('/issue', async (req: Request, res: Response) => {
           issues.push(issue)
           existing.known_issues = issues
           await query(
-            'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2',
-            [JSON.stringify(existing), session_id]
+            'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2 AND api_key_id = $3',
+            [JSON.stringify(existing), session_id, apiKey?.id || null]
           )
         }
       }
@@ -232,7 +259,9 @@ cloudSessionRoutes.post('/issue', async (req: Request, res: Response) => {
       if (!session.known_issues.includes(issue)) session.known_issues.push(issue)
       await writeFileCache(cache)
     }
-  } catch {}
+  } catch (err: any) {
+    console.warn('[CloudSession] Issue file cache write failed:', err?.message || err)
+  }
 
   res.json({ success: true, session_id, issue })
 })
@@ -243,6 +272,7 @@ cloudSessionRoutes.post('/issue', async (req: Request, res: Response) => {
 cloudSessionRoutes.post('/search', async (req: Request, res: Response) => {
   const { query: q } = req.body
   if (!q) return res.status(400).json({ error: 'query is required' })
+  const apiKey = (req as any).apiKey
 
   let results: any[] = []
 
@@ -250,9 +280,9 @@ cloudSessionRoutes.post('/search', async (req: Request, res: Response) => {
     if (HAS_DB) {
       const result = await query(
         `SELECT data FROM sessions
-         WHERE data::text ILIKE '%' || $1 || '%'
+         WHERE api_key_id = $1 AND (data::text ILIKE '%' || $2 || '%')
          ORDER BY created_at DESC LIMIT 20`,
-        [q]
+        [apiKey?.id || null, q]
       )
       results = result.rows.map(r => r.data)
       if (results.length > 0) {

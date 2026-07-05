@@ -54,6 +54,7 @@ export class Buiry {
   private api: BuiryAPI;
   private sessionId: string;
   private memory: Map<string, string>;
+  public failedCaptures = 0;
 
   constructor(config: BuiryConfig) {
     this.config = BuiryConfigSchema.parse(config);
@@ -88,7 +89,7 @@ export class Buiry {
 
   remember(key: string, value: string): void {
     this.memory.set(key, value);
-    this.api.storeMemory({ key, value, sessionId: this.sessionId, timestamp: new Date().toISOString() }).catch(() => {});
+    this.api.storeMemory({ key, value, sessionId: this.sessionId, timestamp: new Date().toISOString() }).catch((err) => { this.failedCaptures++; console.warn('[Buiry SDK] Memory store failed:', err?.message || err) });
   }
 
   recall(query: string): Promise<import("./types.js").MemoryEntry[]> { return this.api.searchMemory(query, this.sessionId); }

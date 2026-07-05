@@ -5,6 +5,9 @@ const PII_PATTERNS = [
   /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
   /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g,
   /\b\d{3}-\d{2}-\d{4}\b/g,
+  /\b[A-Z][a-z]+\s[A-Z][a-z]+\b/g,
+  /\d+\s+[A-Za-z]+\s+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)\b/gi,
+  /\+\d{1,3}[\s-]?\d{3,4}[\s-]?\d{3,4}[\s-]?\d{3,4}\b/g,
 ];
 
 function stripPII(text: string): string {
@@ -103,8 +106,8 @@ async function captureAsync(
     };
 
     await api.captureInteraction(pattern);
-  } catch {
-    // capture failures must not affect caller
+  } catch (err: any) {
+    console.warn('[Buiry SDK] Interaction capture failed:', err?.message || err)
   }
 }
 

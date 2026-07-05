@@ -80,6 +80,9 @@ jobs:
       - run: npm install
       - run: npx tsc --noEmit
       - run: npm run build
+      - name: Test SDK
+        run: npm test
+        working-directory: packages/sdk-ts
 
   test-adk:
     name: Test ADK Agents

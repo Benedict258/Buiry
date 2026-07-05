@@ -21,7 +21,8 @@ export async function readConfig(projectRoot: string): Promise<BuiryConfig> {
     const raw = await readFile(configPath, "utf-8");
     const parsed = JSON.parse(raw);
     return { ...DEFAULTS, ...parsed };
-  } catch {
+  } catch (err: any) {
+    console.warn('[MCP] Config read failed, using defaults:', err?.message || String(err))
     return { ...DEFAULTS };
   }
 }

@@ -11,12 +11,6 @@ walrusClient.connect().catch(() => {})
 
 const HAS_DB = !!process.env.DATABASE_URL
 
-const mockDatasets = [
-  { id: 'ds_1', name: 'Session Logs', rows: 1240, size: '4.2 MB', created: '2026-06-15' },
-  { id: 'ds_2', name: 'Code Embeddings', rows: 8900, size: '12.8 MB', created: '2026-06-20' },
-  { id: 'ds_3', name: 'Decision History', rows: 340, size: '1.1 MB', created: '2026-06-28' },
-]
-
 datasetRoutes.get('/', async (_req: Request, res: Response) => {
   if (HAS_DB) {
     try {
@@ -40,7 +34,7 @@ datasetRoutes.get('/', async (_req: Request, res: Response) => {
       console.warn('[Dataset] DB query failed:', err)
     }
   }
-  res.json({ datasets: mockDatasets })
+  res.status(503).json({ datasets: [], error: 'Storage unavailable', fallback: true })
 })
 
 datasetRoutes.get('/:id', async (req: Request, res: Response) => {
@@ -75,9 +69,7 @@ datasetRoutes.get('/:id', async (req: Request, res: Response) => {
     }
   }
 
-  const ds = mockDatasets.find(d => d.id === id)
-  if (!ds) return res.status(404).json({ error: 'Dataset not found' })
-  res.json(ds)
+  res.status(503).json({ error: 'Storage unavailable', fallback: true })
 })
 
 datasetRoutes.post('/list', async (req: Request, res: Response) => {
@@ -86,8 +78,10 @@ datasetRoutes.post('/list', async (req: Request, res: Response) => {
 
   try {
     const result = await suiClient.listOnMarketplace(datasetId, price ?? 0)
+    if (!result) throw new Error('Sui transaction failed')
     return res.json({
-      listingId: result.listingId,
+      listingId: result.listingId || datasetId,
+      digest: result.digest,
       datasetId,
       price: price ?? 0,
       status: 'listed',
@@ -115,6 +109,7 @@ datasetRoutes.post('/upload', async (req: Request, res: Response) => {
       const buffer = Buffer.from(data, 'base64')
       const result = await walrusClient.uploadBlob(buffer, metadata || {})
       if (result) {
+        let suiResult: { digest?: string; objectId?: string } | null = null;
         if (HAS_DB) {
           try {
             await query(
@@ -126,15 +121,33 @@ datasetRoutes.post('/upload', async (req: Request, res: Response) => {
             console.warn('[Dataset] DB insert failed:', err)
           }
         }
-        return res.json({ blobId: result.blobId, status: 'uploaded', storage: 'walrus' })
+        try {
+          suiResult = await suiClient.registerDataset(
+            (metadata?.buiry_workspace_id as string) || 'default',
+            result.blobId,
+            (metadata?.buiry_category as string) || 'uploaded',
+            (metadata?.buiry_domain as string) || 'general',
+            (metadata?.buiry_sample_size as number) || 0,
+          );
+        } catch (err) {
+          console.warn('[Dataset] Sui registerDataset failed:', err);
+        }
+        return res.json({
+          blobId: result.blobId,
+          blobUrl: result.blobUrl,
+          status: 'uploaded',
+          storage: 'walrus',
+          suiDigest: suiResult?.digest,
+          suiObjectId: suiResult?.objectId,
+        })
       }
     } catch (err) {
       console.warn('[Dataset] Walrus upload failed:', err)
     }
   }
 
-  const blobId = `blob_${Date.now()}`
   if (HAS_DB) {
+    const blobId = `blob_${Date.now()}`
     try {
       await query(
         `INSERT INTO datasets (category, domain, sample_size, walrus_blob_id)
@@ -144,6 +157,8 @@ datasetRoutes.post('/upload', async (req: Request, res: Response) => {
     } catch (err) {
       console.warn('[Dataset] DB insert failed:', err)
     }
+    res.json({ blobId, status: 'uploaded', storage: 'local' })
+    return
   }
-  res.json({ blobId, status: 'uploaded', storage: 'local' })
+  res.status(503).json({ error: 'Walrus unavailable and no database fallback — storage unavailable' })
 })

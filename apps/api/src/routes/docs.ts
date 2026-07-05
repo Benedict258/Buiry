@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express'
 
 export const docsRoutes = Router()
 
+// STUB — not yet connected to a generation provider.
+// Returns a placeholder with the requested type and timestamp.
 docsRoutes.post('/generate', (req: Request, res: Response) => {
   const { type, context } = req.body as { type?: string; context?: string }
   res.json({

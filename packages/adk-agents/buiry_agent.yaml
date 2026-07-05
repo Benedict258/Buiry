@@ -1,9 +1,26 @@
-# Buiry Agent configuration for Google Agents CLI
-# Usage: agents chat --agent buiry
+name: buiry
+description: Persistent build memory for AI agents — powered by Buiry
+version: "0.1.0"
+skill_class: buiry.skill.BuirySkill
+entry_point: buiry.skill
 
-agents:
-  - name: buiry
-    description: "Buiry Memory Agent — persistent context and session management for AI coding agents"
-    model: gemini-2.5-flash
-    instruction: agents/buiry_cli_agent.py
-    type: python
+tools:
+  - name: buiry_start_session
+    description: Restore full project context at the start of a session
+  - name: buiry_end_session
+    description: Validate and commit a completed session object
+  - name: buiry_remember
+    description: Write a memory entry to Buiry workspace
+  - name: buiry_recall
+    description: Search across all session history
+  - name: buiry_checkpoint
+    description: Save a mid-session checkpoint
+  - name: buiry_flag_issue
+    description: Flag an issue for future sessions
+  - name: buiry_init
+    description: Initialize a new Buiry project
+
+config:
+  api_key: ${BUIRY_API_KEY}
+  workspace_id: default
+  backend_url: https://buiry.up.railway.app
