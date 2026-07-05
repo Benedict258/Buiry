@@ -6,6 +6,7 @@ import { z } from "zod";
 import { readMemory, writeMemory } from "../memory.js";
 import { validateSession } from "../types.js";
 import type { BuildContextMemory, SessionObject } from "../types.js";
+import { syncSingleSession } from "../api-client.js";
 
 export const startSessionArgs = {
   project_root: z
@@ -88,6 +89,15 @@ export async function handleEndSession(
       memory.sessions = memory.sessions.slice(-maxSessions);
     }
     await writeMemory(root, memory);
+
+    // Auto-sync to dashboard if configured
+    let synced = false;
+    const dashboardUrl = process.env.BUIRY_DASHBOARD_URL;
+    const apiKey = process.env.BUIRY_API_KEY;
+    if (dashboardUrl && apiKey) {
+      synced = await syncSingleSession(validation.session, dashboardUrl, apiKey);
+    }
+
     return {
       content: [
         {
@@ -97,6 +107,7 @@ export async function handleEndSession(
               success: true,
               session_id: validation.session.session_id,
               total_sessions: memory.sessions.length,
+              synced_to_dashboard: synced || undefined,
             },
             null,
             2

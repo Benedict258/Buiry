@@ -4,11 +4,15 @@
  *
  * This file bootstraps the Buiry MCP (Model Context Protocol) server, which
  * acts as the persistent memory layer for AI coding agents. The server exposes
- * 7 tools that agents use to read/write project context across sessions.
+ * 9 tools that agents use to read/write project context across sessions.
  *
  * Architecture decision: We use stdio transport rather than HTTP because
  * MCP servers are typically spawned as child processes by AI agent hosts
  * (e.g., Claude Code, Cursor). Stdio avoids port conflicts and firewall issues.
+ *
+ * Dashboard sync: When BUIRY_DASHBOARD_URL and BUIRY_API_KEY are set,
+ * sessions are automatically pushed to the Buiry dashboard API, enabling
+ * visual session browsing at https://buiry.vercel.app.
  *
  * Tool registration pattern: Each tool is defined with a Zod schema (for input
  * validation) and an async handler. The server validates inputs against the schema
@@ -37,6 +41,7 @@ import {
   handleGenerateDocs,
 } from "./tools/docs.js";
 import { executeArgs, handleExecute } from "./tools/execute.js";
+import { syncArgs, handleSync } from "./tools/sync.js";
 
 /**
  * Detect the project root directory for memory file resolution.
@@ -206,6 +211,23 @@ server.tool(
   "Universal intent router — send raw user text and Buiry automatically classifies intent, extracts params, and calls the right tool (start_session, log_decision, flag_issue, get_context, generate_docs, or init).",
   executeArgs,
   async (args) => handleExecute(args, detectProjectRoot)
+);
+
+/**
+ * Tool 9: buiry_sync
+ *
+ * Pushes all local session data from Build-Context-Memory.json to the Buiry
+ * dashboard API. This is the bridge between offline MCP usage and the cloud
+ * dashboard at https://buiry.vercel.app.
+ *
+ * When BUIRY_DASHBOARD_URL and BUIRY_API_KEY env vars are set, sessions are
+ * also auto-synced at end_session time, making sync transparent.
+ */
+server.tool(
+  "buiry_sync",
+  "Sync all local sessions to the Buiry dashboard. Requires BUIRY_API_KEY.",
+  syncArgs,
+  async (args) => handleSync(args, detectProjectRoot)
 );
 
 /**

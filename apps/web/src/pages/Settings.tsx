@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 const codeSnippet = `import { BuiryClient } from '@buiry/sdk';
 
@@ -7,25 +7,57 @@ const client = new BuiryClient({
   workspace: 'devlabs-os',
 });`;
 
-const toggles = [
-  { id: "auto-suggest", label: "Auto-Suggest Indices", defaultOn: true },
-  { id: "anomaly", label: "Anomaly Alerts", defaultOn: true },
-  { id: "rate-limit", label: "Smart Rate Limiting", defaultOn: false },
-];
-
 const regionOptions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"];
 const retentionOptions = ["7 days", "30 days", "90 days", "1 year"];
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_KEY = import.meta.env.VITE_BUIRY_API_KEY || "";
+
+interface KeyRecord {
+  id: string;
+  name: string;
+  project_id: string;
+  key_prefix: string;
+  is_active: boolean;
+  created_at: string;
+  last_used_at: string | null;
+}
 
 export default function Settings() {
   const [autoCapture, setAutoCapture] = useState(true);
   const [domain, setDomain] = useState("");
   const [region, setRegion] = useState("us-east-1");
   const [retention, setRetention] = useState("30 days");
-  const [toggleStates, setToggleStates] = useState<Record<string, boolean>>({
-    "auto-suggest": true,
-    anomaly: true,
-    "rate-limit": false,
-  });
+
+  // API Key Management
+  const [keys, setKeys] = useState<KeyRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [newKeyName, setNewKeyName] = useState("");
+  const [freshKey, setFreshKey] = useState(""); // newly created key shown once
+  const [copied, setCopied] = useState(false);
+
+  const fetchKeys = useCallback(async () => {
+    if (!API_KEY) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/keys`, {
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setKeys(data.keys || []);
+      }
+    } catch {
+      // Dashboard may not be connected to backend
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -38,15 +70,53 @@ export default function Settings() {
     };
   }, []);
 
-  const handleToggle = (id: string) => {
-    setToggleStates((prev) => ({ ...prev, [id]: !prev[id] }));
+  const createKey = async () => {
+    if (!newKeyName.trim()) return;
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/api/keys`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+        body: JSON.stringify({ name: newKeyName.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFreshKey(data.api_key);
+        setNewKeyName("");
+        fetchKeys();
+      } else {
+        const err = await res.json();
+        setError(err.error || "Failed to create key");
+      }
+    } catch {
+      setError("Cannot connect to API. Is the backend running?");
+    }
   };
 
-  const apiKey = import.meta.env.VITE_BUIRY_API_KEY || "";
+  const revokeKey = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/keys/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+      });
+      if (res.ok) {
+        fetchKeys();
+      }
+    } catch {
+      setError("Failed to revoke key");
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="p-lg max-w-[1200px] mx-auto space-y-lg">
-      {/* ── Header ──────────────────────────────────────────────────── */}
+      {/* Header */}
       <header className="border-l-4 border-primary pl-md">
         <h1 className="text-headline-lg font-headline-lg font-bold text-text-primary">
           Settings
@@ -56,30 +126,130 @@ export default function Settings() {
         </p>
       </header>
 
-      {/* ── Two-Column Layout ───────────────────────────────────────── */}
+      {/* Two-Column Layout */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-lg">
-        {/* ── Left Column (8 cols) ──────────────────────────────────── */}
+        {/* Left Column */}
         <div className="col-span-12 md:col-span-8 space-y-lg">
-          {/* API Credentials */}
+          {/* Freshly Created Key Banner */}
+          {freshKey && (
+            <section className="bg-success/10 border border-success/30 rounded-lg p-lg space-y-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="font-section-header text-sm font-semibold text-success">
+                  Key Created
+                </h2>
+                <button
+                  onClick={() => setFreshKey("")}
+                  className="text-text-secondary hover:text-text-primary"
+                >
+                  <span className="material-icons-round text-[16px]">close</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-sm">
+                <code className="flex-1 px-md py-sm bg-surface-container border border-border-subtle rounded font-meta-mono text-sm text-text-primary break-all">
+                  {freshKey}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(freshKey)}
+                  className="px-sm py-sm bg-surface-container border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors"
+                >
+                  <span className="material-icons-round text-[16px]">content_copy</span>
+                </button>
+              </div>
+              <p className="text-text-secondary text-xs font-body-base">
+                Copy this key now. It will not be shown again. Use it as{" "}
+                <code className="bg-surface-container px-1 rounded text-[11px]">BUIRY_API_KEY</code>{" "}
+                in your MCP config or <code className="bg-surface-container px-1 rounded text-[11px]">X-Api-Key</code> header.
+              </p>
+              {copied && (
+                <p className="text-success text-xs font-meta-mono">Copied to clipboard!</p>
+              )}
+            </section>
+          )}
+
+          {/* API Keys Management */}
           <section className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
             <h2 className="font-section-header text-sm font-semibold text-text-primary">
-              API Credentials
+              API Keys
             </h2>
 
-            <div className="space-y-sm">
-              <label className="text-text-secondary font-meta-mono text-[10px] uppercase">
-                API Key
-              </label>
-              <div className="flex items-center gap-sm">
-                <div className="flex-1 px-md py-sm bg-surface-container border border-border-subtle rounded font-meta-mono text-sm text-text-secondary">
-                  {apiKey ? `${apiKey.slice(0, 12)}••••••••` : "Not configured"}
-                </div>
-                {apiKey && (
-                  <button className="px-sm py-sm bg-surface-container border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
-                    <span className="material-icons-round text-[16px]">content_copy</span>
-                  </button>
-                )}
+            {error && (
+              <div className="px-md py-sm bg-error/10 border border-error/30 rounded text-error text-sm">
+                {error}
               </div>
+            )}
+
+            {/* Create New Key */}
+            <div className="flex gap-sm">
+              <input
+                type="text"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createKey()}
+                placeholder="Key name (e.g. 'production', 'dev')"
+                className="flex-1 px-md py-sm bg-surface-container border border-border-subtle rounded text-text-primary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors"
+              />
+              <button
+                onClick={createKey}
+                disabled={!newKeyName.trim() || loading}
+                className="px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create Key
+              </button>
+            </div>
+
+            {/* Keys List */}
+            <div className="space-y-sm">
+              {loading && (
+                <p className="text-text-secondary text-sm">Loading keys...</p>
+              )}
+              {!loading && keys.length === 0 && (
+                <p className="text-text-secondary text-sm">
+                  No API keys yet. Create one above.
+                </p>
+              )}
+              {keys.map((key) => (
+                <div
+                  key={key.id}
+                  className="flex items-center justify-between px-md py-sm bg-surface-container border border-border-subtle rounded"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-sm">
+                      <span className="text-text-primary text-sm font-body-base truncate">
+                        {key.name}
+                      </span>
+                      <span
+                        className={`inline-block w-2 h-2 rounded-full ${
+                          key.is_active ? "bg-success" : "bg-error"
+                        }`}
+                      />
+                      <span className="text-text-secondary font-meta-mono text-[10px]">
+                        {key.is_active ? "ACTIVE" : "REVOKED"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-sm mt-1">
+                      <code className="text-text-secondary font-meta-mono text-[10px]">
+                        {key.key_prefix}...
+                      </code>
+                      <span className="text-text-secondary font-meta-mono text-[10px]">
+                        Created {new Date(key.created_at).toLocaleDateString()}
+                      </span>
+                      {key.last_used_at && (
+                        <span className="text-text-secondary font-meta-mono text-[10px]">
+                          Last used {new Date(key.last_used_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {key.is_active && (
+                    <button
+                      onClick={() => revokeKey(key.id)}
+                      className="px-sm py-1 border border-error/30 text-error font-meta-mono text-[10px] rounded hover:bg-error/10 transition-colors ml-sm"
+                    >
+                      Revoke
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
 
@@ -161,13 +331,16 @@ export default function Settings() {
             </div>
           </section>
 
-          {/* Co-pilot Integration */}
+          {/* Code Snippet */}
           <section className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
             <div className="flex items-center justify-between">
               <h2 className="font-section-header text-sm font-semibold text-text-primary">
-                Claude Code Snippet
+                MCP Config Snippet
               </h2>
-              <button className="px-sm py-[4px] bg-surface-container border border-border-subtle rounded font-meta-mono text-[10px] text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors">
+              <button
+                onClick={() => copyToClipboard(codeSnippet)}
+                className="px-sm py-[4px] bg-surface-container border border-border-subtle rounded font-meta-mono text-[10px] text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors"
+              >
                 COPY
               </button>
             </div>
@@ -177,7 +350,7 @@ export default function Settings() {
           </section>
         </div>
 
-        {/* ── Right Column (4 cols) ─────────────────────────────────── */}
+        {/* Right Column */}
         <div className="col-span-12 md:col-span-4 space-y-lg">
           {/* Current Plan */}
           <section className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden">
@@ -195,13 +368,13 @@ export default function Settings() {
             <div className="p-md space-y-md">
               <div className="space-y-xs">
                 <div className="flex justify-between text-[11px] font-meta-mono text-text-secondary">
-                  <span>Agent Instances</span>
-                  <span className="text-text-primary">0/5</span>
+                  <span>API Keys</span>
+                  <span className="text-text-primary">{keys.length}/5</span>
                 </div>
                 <div className="h-2 w-full bg-border-subtle rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
-                    style={{ width: "0%" }}
+                    style={{ width: `${Math.min(keys.length * 20, 100)}%` }}
                   />
                 </div>
               </div>
@@ -228,57 +401,24 @@ export default function Settings() {
             </div>
           </section>
 
-          {/* Co-pilot Assistant */}
-          <section className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
-            <h2 className="font-section-header text-sm font-semibold text-text-primary">
-              Co-pilot Assistant
-            </h2>
-            {toggles.map((t) => (
-              <div key={t.id} className="flex items-center justify-between">
-                <span className="text-text-primary text-sm font-body-base">
-                  {t.label}
-                </span>
-                <button
-                  onClick={() => handleToggle(t.id)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${
-                    toggleStates[t.id] ? "bg-primary" : "bg-surface-variant"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-on-primary transition-transform ${
-                      toggleStates[t.id] ? "translate-x-5" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-            ))}
-          </section>
-
           {/* Network Status */}
           <section className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-sm">
             <h2 className="font-section-header text-sm font-semibold text-text-primary">
-              Network Status
+              Backend Status
             </h2>
-            <div className="w-full h-32 bg-surface-container border border-border-subtle rounded flex items-center justify-center">
-              <span className="material-icons-round text-text-secondary text-[32px]">
-                signal_wifi_off
-              </span>
+            <div className="p-md bg-surface-container border border-border-subtle rounded">
+              <div className="flex items-center gap-sm mb-sm">
+                <span className={`inline-block w-2 h-2 rounded-full ${keys.length > 0 ? "bg-success" : "bg-text-secondary"}`} />
+                <span className="text-text-primary text-sm font-body-base">
+                  {keys.length > 0 ? "Connected" : "Configure API key"}
+                </span>
+              </div>
+              <p className="text-text-secondary font-meta-mono text-[10px]">
+                API: {API_URL}
+              </p>
             </div>
-            <p className="text-text-secondary font-meta-mono text-[10px] text-center">
-              No active network diagnostic
-            </p>
           </section>
         </div>
-      </div>
-
-      {/* ── Footer ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row justify-between gap-sm pt-md border-t border-border-subtle">
-        <button className="px-md py-sm border border-border-subtle text-text-secondary font-body-base text-sm rounded hover:bg-surface-elevated transition-colors">
-          Discard Changes
-        </button>
-        <button className="px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors">
-          Save Configuration
-        </button>
       </div>
     </div>
   );
