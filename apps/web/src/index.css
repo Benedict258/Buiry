@@ -19,20 +19,22 @@
   --color-outline: #64748b;
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
-  --color-primary: #3b82f6;
-  --color-primary-container: #dbeafe;
+  --color-primary: #65a30d;
+  --color-primary-container: #ecfccb;
   --color-on-primary: #ffffff;
-  --color-on-secondary-container: #4c1d95;
+  --color-on-secondary-container: #1e3a5f;
   --color-on-surface-variant: #64748b;
-  --color-secondary: #8b5cf6;
-  --color-secondary-container: #ede9fe;
-  --color-tertiary: #84cc16;
+  --color-secondary: #3b82f6;
+  --color-secondary-container: #dbeafe;
+  --color-tertiary: #fbbf24;
+  --color-accent: #65a30d;
+  --color-accent-foreground: #ffffff;
   --color-status-success: #22c55e;
   --color-status-warning: #eab308;
   --color-status-error: #ef4444;
 }
 
-/* Dark mode — landing page palette */
+/* Dark mode */
 .dark {
   --color-background: #05080d;
   --color-surface: #05080d;
@@ -47,14 +49,16 @@
   --color-outline: #475569;
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
-  --color-primary: #58a6ff;
-  --color-primary-container: #1e3a5f;
+  --color-primary: #e4f54b;
+  --color-primary-container: #2d3a0a;
   --color-on-primary: #05080d;
-  --color-on-secondary-container: #ddd6fe;
+  --color-on-secondary-container: #dbeafe;
   --color-on-surface-variant: #94a3b8;
-  --color-secondary: #a78bfa;
-  --color-secondary-container: #2e1065;
-  --color-tertiary: #e4f54b;
+  --color-secondary: #58a6ff;
+  --color-secondary-container: #1e3a5f;
+  --color-tertiary: #a78bfa;
+  --color-accent: #e4f54b;
+  --color-accent-foreground: #05080d;
   --color-status-success: #22c55e;
   --color-status-warning: #eab308;
   --color-status-error: #ef4444;
@@ -87,7 +91,7 @@
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 70%, var(--color-tertiary) 100%);
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-tertiary) 50%, var(--color-primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -96,15 +100,11 @@
   .border-gradient {
     border: 1px solid transparent;
     background: linear-gradient(var(--color-surface-card), var(--color-surface-card)) padding-box,
-                linear-gradient(135deg, var(--color-primary), var(--color-secondary), var(--color-tertiary)) border-box;
+                linear-gradient(135deg, var(--color-secondary), var(--color-tertiary), var(--color-primary)) border-box;
   }
 
   .glow-primary {
     box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 15%, transparent), 0 0 80px color-mix(in srgb, var(--color-primary) 5%, transparent);
-  }
-
-  .glow-green {
-    box-shadow: 0 0 40px color-mix(in srgb, var(--color-tertiary) 12%, transparent), 0 0 80px color-mix(in srgb, var(--color-tertiary) 4%, transparent);
   }
 
   .section-padding {

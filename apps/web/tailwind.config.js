@@ -36,6 +36,10 @@ export default {
           container: "var(--color-secondary-container)",
         },
         tertiary: "var(--color-tertiary)",
+        accent: {
+          DEFAULT: "var(--color-accent)",
+          foreground: "var(--color-accent-foreground)",
+        },
         status: {
           success: "var(--color-status-success)",
           warning: "var(--color-status-warning)",

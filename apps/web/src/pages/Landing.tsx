@@ -74,7 +74,7 @@ function Navbar() {
             href="https://github.com/Benedict258/Buiry"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 rounded-lg bg-tertiary text-background text-sm font-semibold hover:opacity-90 transition-all"
+            className="px-4 py-2 rounded-lg bg-primary text-background text-sm font-semibold hover:opacity-90 transition-all"
           >
             GitHub
           </a>
@@ -88,12 +88,12 @@ function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-primary/5 blur-[120px]" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-accent/5 blur-[120px]" />
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-secondary/5 blur-[100px]" />
 
       <div className="relative container-landing px-6 md:px-12 lg:px-24 text-center space-y-8 pt-24">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-sm text-text-secondary font-meta-mono">
-          <span className="w-2 h-2 rounded-full bg-tertiary" />
+          <span className="w-2 h-2 rounded-full bg-primary" />
           v0.1 — Kaggle AI Agents Hackathon
         </div>
 
@@ -114,7 +114,7 @@ function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <a
             href="#sdk"
-            className="px-6 py-3 rounded-lg bg-tertiary text-background text-base font-semibold hover:opacity-90 transition-all glow-green"
+            className="px-6 py-3 rounded-lg bg-primary text-background text-base font-semibold hover:opacity-90 transition-all glow-primary"
           >
             Try the SDK
           </a>
@@ -191,8 +191,8 @@ function ProblemSection() {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-tertiary/20 bg-tertiary/5 p-8 space-y-4">
-            <span className="text-tertiary text-sm font-semibold uppercase tracking-wider">
+          <div className="rounded-2xl border border-accent/20 bg-accent/5 p-8 space-y-4">
+            <span className="text-accent text-sm font-semibold uppercase tracking-wider">
               With Buiry
             </span>
             <ul className="space-y-3">
@@ -204,7 +204,7 @@ function ProblemSection() {
                 "Blockchain-attested provenance on Sui",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3 text-text-secondary">
-                  <span className="text-tertiary mt-0.5 text-sm">✓</span>
+                  <span className="text-accent mt-0.5 text-sm">✓</span>
                   {item}
                 </li>
               ))}
@@ -363,7 +363,7 @@ function FeaturesSection() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-2xl">{f.icon}</span>
-                <span className="text-[10px] font-meta-mono uppercase text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-meta-mono uppercase text-accent bg-accent/10 px-2 py-0.5 rounded-full">
                   {f.badge}
                 </span>
               </div>
@@ -502,7 +502,7 @@ function CTASection() {
       <div className="container-landing">
         <div className="relative rounded-2xl border-gradient overflow-hidden p-12 md:p-16 text-center">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
-          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-tertiary/5 blur-[80px]" />
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-accent/5 blur-[80px]" />
 
           <div className="relative space-y-6">
             <h2
@@ -521,7 +521,7 @@ function CTASection() {
                 href="https://github.com/Benedict258/Buiry"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 rounded-lg bg-tertiary text-background text-base font-semibold hover:opacity-90 transition-all glow-green"
+                className="px-6 py-3 rounded-lg bg-primary text-background text-base font-semibold hover:opacity-90 transition-all glow-primary"
               >
                 View on GitHub
               </a>
