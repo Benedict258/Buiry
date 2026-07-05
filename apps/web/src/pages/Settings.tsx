@@ -11,7 +11,7 @@ const client = new BuiryClient({
 const regionOptions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"];
 const retentionOptions = ["7 days", "30 days", "90 days", "1 year"];
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
 const API_KEY = import.meta.env.VITE_BUIRY_API_KEY || "";
 
 interface KeyRecord {

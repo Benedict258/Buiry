@@ -2,7 +2,7 @@
 // Uses VITE_API_URL environment variable for backend URL
 import type { BuildContextMemory, SessionObject } from './types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 const API_KEY = import.meta.env.VITE_BUIRY_API_KEY || '';
 
 async function apiRequest<T>(path: string, body?: unknown, method?: string): Promise<T | null> {
