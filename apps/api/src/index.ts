@@ -90,7 +90,7 @@ async function initSessionIsolation() {
 
 bootstrap().catch(console.error)
 
-app.post('/api/keys/bootstrap', async (req, res) => {
+app.post('/api/bootstrap-keys', async (req, res) => {
   try {
     const defaultKey = process.env.API_KEY || 'buiry_sk_live_dev_12345'
     const defaultHash = crypto.createHash('sha256').update(defaultKey).digest('hex')
