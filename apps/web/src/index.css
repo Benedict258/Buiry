@@ -75,27 +75,19 @@
   .glass-effect {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-  }
-  .dark .glass-effect {
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: color-mix(in srgb, var(--color-surface-card) 40%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border-subtle) 50%, transparent);
   }
 
   .glass-card {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-  .dark .glass-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: color-mix(in srgb, var(--color-surface-card) 60%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border-subtle) 40%, transparent);
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, #58a6ff 0%, #a2c9ff 40%, #d8baff 70%, #e4f54b 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 70%, var(--color-tertiary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -104,15 +96,15 @@
   .border-gradient {
     border: 1px solid transparent;
     background: linear-gradient(var(--color-surface-card), var(--color-surface-card)) padding-box,
-                linear-gradient(135deg, #58a6ff, #d8baff, #e4f54b) border-box;
+                linear-gradient(135deg, var(--color-primary), var(--color-secondary), var(--color-tertiary)) border-box;
   }
 
   .glow-primary {
-    box-shadow: 0 0 40px rgba(88, 166, 255, 0.15), 0 0 80px rgba(88, 166, 255, 0.05);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 15%, transparent), 0 0 80px color-mix(in srgb, var(--color-primary) 5%, transparent);
   }
 
   .glow-green {
-    box-shadow: 0 0 40px rgba(228, 245, 75, 0.12), 0 0 80px rgba(228, 245, 75, 0.04);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--color-tertiary) 12%, transparent), 0 0 80px color-mix(in srgb, var(--color-tertiary) 4%, transparent);
   }
 
   .section-padding {

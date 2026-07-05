@@ -11,7 +11,7 @@ const navLinks = [
 function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2 group">
-      <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#58a6ff] to-[#d8baff] flex items-center justify-center text-white font-bold text-sm">
+      <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-on-primary font-bold text-sm">
         B
       </span>
       <span className="font-semibold text-lg text-text-primary">Buiry</span>
@@ -32,7 +32,7 @@ function Navbar() {
     <nav
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "glass-effect border-b border-white/5"
+          ? "glass-effect border-b border-border-subtle/20"
           : "bg-transparent"
       }`}
     >
@@ -74,7 +74,7 @@ function Navbar() {
             href="https://github.com/Benedict258/Buiry"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 rounded-lg bg-[#e4f54b] text-black text-sm font-semibold hover:bg-[#d4e53b] transition-colors"
+            className="px-4 py-2 rounded-lg bg-tertiary text-background text-sm font-semibold hover:opacity-90 transition-all"
           >
             GitHub
           </a>
@@ -87,13 +87,13 @@ function Navbar() {
 function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#58a6ff]/5 via-transparent to-transparent" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-[#58a6ff]/3 blur-[120px]" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-[#d8baff]/5 blur-[100px]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-primary/5 blur-[120px]" />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-secondary/5 blur-[100px]" />
 
       <div className="relative container-landing px-6 md:px-12 lg:px-24 text-center space-y-8 pt-24">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-sm text-text-secondary font-meta-mono">
-          <span className="w-2 h-2 rounded-full bg-[#e4f54b]" />
+          <span className="w-2 h-2 rounded-full bg-tertiary" />
           v0.1 — Kaggle AI Agents Hackathon
         </div>
 
@@ -114,13 +114,13 @@ function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <a
             href="#sdk"
-            className="px-6 py-3 rounded-lg bg-[#e4f54b] text-black text-base font-semibold hover:bg-[#d4e53b] transition-all hover:glow-green"
+            className="px-6 py-3 rounded-lg bg-tertiary text-background text-base font-semibold hover:opacity-90 transition-all glow-green"
           >
             Try the SDK
           </a>
           <Link
             to="/dashboard"
-            className="px-6 py-3 rounded-lg border border-white/10 text-text-primary text-base font-medium hover:bg-white/5 transition-all"
+            className="px-6 py-3 rounded-lg border border-border-subtle text-text-primary text-base font-medium hover:bg-surface-elevated transition-all"
           >
             Open Dashboard
           </Link>
@@ -171,8 +171,8 @@ function ProblemSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 space-y-4">
-            <span className="text-red-400 text-sm font-semibold uppercase tracking-wider">
+          <div className="rounded-2xl border border-status-error/20 bg-status-error/5 p-8 space-y-4">
+            <span className="text-status-error text-sm font-semibold uppercase tracking-wider">
               Without Buiry
             </span>
             <ul className="space-y-3">
@@ -184,15 +184,15 @@ function ProblemSection() {
                 "No dataset provenance or verification",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3 text-text-secondary">
-                  <span className="text-red-400 mt-0.5 text-sm">✗</span>
+                  <span className="text-status-error mt-0.5 text-sm">✗</span>
                   {item}
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-[#e4f54b]/20 bg-[#e4f54b]/5 p-8 space-y-4">
-            <span className="text-[#e4f54b] text-sm font-semibold uppercase tracking-wider">
+          <div className="rounded-2xl border border-tertiary/20 bg-tertiary/5 p-8 space-y-4">
+            <span className="text-tertiary text-sm font-semibold uppercase tracking-wider">
               With Buiry
             </span>
             <ul className="space-y-3">
@@ -204,7 +204,7 @@ function ProblemSection() {
                 "Blockchain-attested provenance on Sui",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3 text-text-secondary">
-                  <span className="text-[#e4f54b] mt-0.5 text-sm">✓</span>
+                  <span className="text-tertiary mt-0.5 text-sm">✓</span>
                   {item}
                 </li>
               ))}
@@ -268,9 +268,9 @@ function HowItWorksSection() {
           {steps.map((s, i) => (
             <div
               key={s.step}
-              className="relative group rounded-2xl glass-card p-6 space-y-4 hover:border-[#58a6ff]/30 transition-all duration-300"
+              className="relative group rounded-2xl glass-card p-6 space-y-4 hover:border-primary/20 transition-all duration-300"
             >
-              <span className="text-5xl font-bold text-white/5 group-hover:text-[#58a6ff]/10 transition-colors">
+              <span className="text-5xl font-bold text-text-primary/5 group-hover:text-primary/10 transition-colors">
                 {s.step}
               </span>
               <h3
@@ -282,7 +282,7 @@ function HowItWorksSection() {
               <p className="text-sm text-text-secondary leading-relaxed">
                 {s.description}
               </p>
-              <pre className="text-xs font-meta-mono text-[#58a6ff] bg-black/20 rounded-lg p-3 overflow-x-auto">
+              <pre className="text-xs font-meta-mono text-primary bg-surface-container rounded-lg p-3 overflow-x-auto">
                 {s.code}
               </pre>
 
@@ -359,11 +359,11 @@ function FeaturesSection() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="rounded-2xl glass-card p-6 space-y-4 hover:border-[#58a6ff]/20 transition-all duration-300 hover:-translate-y-1"
+              className="rounded-2xl glass-card p-6 space-y-4 hover:border-primary/10 transition-all duration-300 hover:-translate-y-1"
             >
               <div className="flex items-center justify-between">
                 <span className="text-2xl">{f.icon}</span>
-                <span className="text-[10px] font-meta-mono uppercase text-[#e4f54b] bg-[#e4f54b]/10 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-meta-mono uppercase text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">
                   {f.badge}
                 </span>
               </div>
@@ -387,7 +387,7 @@ function FeaturesSection() {
 function SDKSection() {
   return (
     <section id="sdk" className="section-padding">
-      <div className="container-landry">
+      <div className="container-landing">
         <div className="text-center mb-16">
           <h2
             className="text-3xl md:text-4xl font-bold text-text-primary mb-4"
@@ -402,17 +402,8 @@ function SDKSection() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          <div className="rounded-2xl border-gradient bg-surface-card overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-black/20">
-              <span className="w-3 h-3 rounded-full bg-red-500/60" />
-              <span className="w-3 h-3 rounded-full bg-yellow-500/60" />
-              <span className="w-3 h-3 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-xs text-text-secondary font-meta-mono">
-                TypeScript
-              </span>
-            </div>
-            <pre className="p-6 text-sm font-meta-mono text-text-primary overflow-x-auto">
-              <code>{`import { Buiry } from "@buiry/buiry";
+          {[
+            { label: "TypeScript", code: `import { Buiry } from "@buiry/buiry";
 
 // One line to wrap any LLM client
 const buiry = new Buiry({ apiKey: "buiry_sk_..." });
@@ -426,21 +417,8 @@ const reply = await wrapped.chat.completions.create({
 
 // ↑ Prompt, response, tokens, latency, model —
 //   all captured. PII scrubbed. Dataset generated.
-//   You own it.`}</code>
-            </pre>
-          </div>
-
-          <div className="rounded-2xl border-gradient bg-surface-card overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-black/20">
-              <span className="w-3 h-3 rounded-full bg-red-500/60" />
-              <span className="w-3 h-3 rounded-full bg-yellow-500/60" />
-              <span className="w-3 h-3 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-xs text-text-secondary font-meta-mono">
-                Python
-              </span>
-            </div>
-            <pre className="p-6 text-sm font-meta-mono text-text-primary overflow-x-auto">
-              <code>{`from buiry import Buiry
+//   You own it.` },
+            { label: "Python", code: `from buiry import Buiry
 
 # One line to wrap any LLM client
 buiry = Buiry(api_key="buiry_sk_...")
@@ -453,9 +431,20 @@ response = wrapped.chat.completions.create(
 )
 
 # ↑ Same API. Same capture. 14 adapters.
-#   Python SDK published on PyPI.`}</code>
-            </pre>
-          </div>
+#   Python SDK published on PyPI.` },
+          ].map(({ label, code }) => (
+            <div key={label} className="rounded-2xl border-gradient bg-surface-card overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border-subtle bg-surface-container">
+                <span className="w-3 h-3 rounded-full bg-status-error/60" />
+                <span className="w-3 h-3 rounded-full bg-status-warning/60" />
+                <span className="w-3 h-3 rounded-full bg-status-success/60" />
+                <span className="ml-2 text-xs text-text-secondary font-meta-mono">{label}</span>
+              </div>
+              <pre className="p-6 text-sm font-meta-mono text-text-primary overflow-x-auto">
+                <code>{code}</code>
+              </pre>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -469,7 +458,7 @@ function StatsSection() {
     { value: "9", label: "MCP Tools", detail: "Published to npm" },
     { value: "10", label: "AI Agents", detail: "Google ADK + Gemini" },
     { value: "29", label: "API Routes", detail: "PostgreSQL-backed" },
-    { value: "4", label: "Move Contracts", detail: "Sui testnet" },
+    { value: "4", label: "Contracts", detail: "Sui testnet" },
   ];
 
   return (
@@ -489,7 +478,7 @@ function StatsSection() {
           {stats.map((s) => (
             <div
               key={s.label}
-              className="rounded-xl glass-card p-6 space-y-2 hover:border-[#58a6ff]/20 transition-all"
+              className="rounded-xl glass-card p-6 space-y-2 hover:border-primary/10 transition-all"
             >
               <p
                 className="text-3xl font-bold text-gradient"
@@ -512,8 +501,8 @@ function CTASection() {
     <section className="section-padding">
       <div className="container-landing">
         <div className="relative rounded-2xl border-gradient overflow-hidden p-12 md:p-16 text-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#58a6ff]/10 via-transparent to-[#d8baff]/10" />
-          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[#e4f54b]/5 blur-[80px]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-tertiary/5 blur-[80px]" />
 
           <div className="relative space-y-6">
             <h2
@@ -532,13 +521,13 @@ function CTASection() {
                 href="https://github.com/Benedict258/Buiry"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 rounded-lg bg-[#e4f54b] text-black text-base font-semibold hover:bg-[#d4e53b] transition-all hover:glow-green"
+                className="px-6 py-3 rounded-lg bg-tertiary text-background text-base font-semibold hover:opacity-90 transition-all glow-green"
               >
                 View on GitHub
               </a>
               <Link
                 to="/dashboard"
-                className="px-6 py-3 rounded-lg border border-white/10 text-text-primary text-base font-medium hover:bg-white/5 transition-all"
+                className="px-6 py-3 rounded-lg border border-border-subtle text-text-primary text-base font-medium hover:bg-surface-elevated transition-all"
               >
                 Open Dashboard
               </Link>
@@ -552,7 +541,7 @@ function CTASection() {
 
 function FooterSection() {
   return (
-    <footer className="border-t border-white/5 bg-surface-container/30">
+    <footer className="border-t border-border-subtle bg-surface-container/30">
       <div className="container-landing px-6 md:px-12 lg:px-24 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
@@ -578,9 +567,7 @@ function FooterSection() {
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-text-primary mb-3">
-              Developers
-            </h4>
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Developers</h4>
             <div className="space-y-2">
               {[
                 { label: "GitHub", href: "https://github.com/Benedict258/Buiry" },
@@ -612,7 +599,7 @@ function FooterSection() {
           </div>
         </div>
 
-        <div className="border-t border-white/5 mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="border-t border-border-subtle mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-text-secondary font-meta-mono">
             Buiry v0.1 — MIT License — Built with AI agents
           </p>

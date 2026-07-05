@@ -78,7 +78,7 @@ export default function Projects() {
 
       {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md">
+        <div className="fixed inset-0 bg-background/50 z-50 flex items-center justify-center p-md">
           <div className="bg-surface-card border border-border-subtle rounded-lg p-lg w-full max-w-md space-y-md">
             <div className="flex items-center justify-between">
               <h2 className="font-section-header text-sm font-semibold text-text-primary">

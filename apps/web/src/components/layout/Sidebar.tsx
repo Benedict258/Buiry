@@ -19,7 +19,7 @@ export default function Sidebar() {
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 bg-background/50 z-30 md:hidden"
           onClick={close}
         />
       )}
