@@ -1,9 +1,8 @@
-// Context Tools — buiry_get_context
-// Searches across all session memory for relevant context.
-// Local mode: keyword search. Cloud mode: semantic search via MemWal.
+// Context Tool — buiry_get_context
+// Cloud-first: searches Buiry Cloud API first, local file as fallback.
 
 import { z } from "zod";
-import { readMemory, searchMemory } from "../memory.js";
+import { CloudClient } from "../cloud-client.js";
 
 export const getContextArgs = {
   project_root: z
@@ -13,7 +12,6 @@ export const getContextArgs = {
   query: z.string().min(1).describe("Keyword search query"),
   limit: z
     .number()
-    .int()
     .min(1)
     .max(50)
     .optional()
@@ -25,28 +23,23 @@ export async function handleGetContext(
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
+  const cloud = new CloudClient(root);
+
+  if (cloud.requiresApiKey) {
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify({ error: "API key required" }) }],
+      isError: true,
+    };
+  }
+
   try {
-    const memory = await readMemory(root);
-    const matches = searchMemory(memory, args.query);
-    const maxResults = args.limit ?? 10;
-    const results = matches.slice(-maxResults);
+    const result = await cloud.searchContext(args.query);
+    if (args.limit && result.sessions.length > args.limit) {
+      result.sessions = result.sessions.slice(0, args.limit);
+    }
 
     return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            {
-              query: args.query,
-              match_count: matches.length,
-              returned_count: results.length,
-              sessions: results,
-            },
-            null,
-            2
-          ),
-        },
-      ],
+      content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
     };
   } catch (err) {
     return {

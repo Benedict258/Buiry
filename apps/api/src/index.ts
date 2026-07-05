@@ -11,6 +11,7 @@ import { workspaceRoutes } from './routes/workspace.js'
 import { contextRoutes } from './routes/context.js'
 import { docsRoutes } from './routes/docs.js'
 import { keyRoutes } from './routes/keys.js'
+import { cloudSessionRoutes } from './routes/cloud-session.js'
 import { authMiddleware } from './middleware/auth.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { rateLimit } from './middleware/ratelimit.js'
@@ -75,6 +76,7 @@ app.use('/api/workspace', authMiddleware, workspaceRoutes)
 app.use('/api/context', authMiddleware, contextRoutes)
 app.use('/api/docs', authMiddleware, docsRoutes)
 app.use('/api/keys', authMiddleware, keyRoutes)
+app.use('/api/session/cloud', authMiddleware, cloudSessionRoutes)
 
 app.use(sentryErrorHandler)
 app.use(errorHandler)

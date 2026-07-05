@@ -1,11 +1,11 @@
 /**
- * buiry_sync — Push local session memory to the Buiry dashboard.
+ * buiry_sync — Push local session memory to the Buiry Cloud.
  *
- * This is the bridge between offline MCP usage and the cloud dashboard.
- * Users run `buiry_sync` after a session to see their work at buiry.vercel.app.
+ * Cloud-first sync tool. When users have been working offline,
+ * this pushes all local sessions to the cloud in one batch.
  */
 import { z } from "zod";
-import { syncToDashboard } from "../api-client.js";
+import { CloudClient } from "../cloud-client.js";
 
 export const syncArgs = {
   dashboard_url: z
@@ -30,46 +30,36 @@ export async function handleSync(
   },
   detectProjectRoot: () => string
 ) {
-  const projectRoot = args.project_root || detectProjectRoot();
-  const dashboardUrl = args.dashboard_url || process.env.BUIRY_DASHBOARD_URL || "https://buiry.up.railway.app";
-  const apiKey = args.api_key || process.env.BUIRY_API_KEY || "";
+  const root = args.project_root || detectProjectRoot();
+  const cloud = new CloudClient(root);
 
-  if (!apiKey) {
+  if (cloud.requiresApiKey && !args.api_key) {
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              error: "No API key provided. Set BUIRY_API_KEY env var or pass api_key parameter.",
-              help: "Get your API key from https://buiry.vercel.app/settings",
-            },
-            null,
-            2
-          ),
+          text: JSON.stringify({
+            error: "No API key provided.",
+            help: "Set BUIRY_API_KEY env var or pass api_key parameter. Get your key at https://buiry.vercel.app/settings",
+          }, null, 2),
         },
       ],
     };
   }
 
-  const result = await syncToDashboard(projectRoot, dashboardUrl, apiKey);
+  const result = await cloud.syncAll();
 
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            message:
-              result.synced > 0
-                ? `Synced ${result.synced} sessions to ${dashboardUrl}`
-                : "No sessions to sync",
-            ...result,
-            view_url: "https://buiry.vercel.app/sessions",
-          },
-          null,
-          2
-        ),
+        text: JSON.stringify({
+          message: result.synced > 0
+            ? `Synced ${result.synced} sessions to cloud`
+            : "No sessions to sync",
+          ...result,
+          view_url: "https://buiry.vercel.app/sessions",
+        }, null, 2),
       },
     ],
   };

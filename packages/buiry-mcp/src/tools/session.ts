@@ -1,12 +1,9 @@
 // Session Tools — buiry_start_session, buiry_end_session, buiry_log_decision, buiry_flag_issue
-// These tools manage the session lifecycle: starting, ending, and mid-session logging.
-// Each tool validates input and returns MCP-format responses.
+// Cloud-first architecture: All operations go to Buiry Cloud API first, local file as fallback.
 
 import { z } from "zod";
-import { readMemory, writeMemory } from "../memory.js";
 import { validateSession } from "../types.js";
-import type { BuildContextMemory, SessionObject } from "../types.js";
-import { syncSingleSession } from "../api-client.js";
+import { CloudClient } from "../cloud-client.js";
 
 export const startSessionArgs = {
   project_root: z
@@ -20,30 +17,28 @@ export async function handleStartSession(
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  try {
-    const memory = await readMemory(root);
-    const last5 = memory.sessions.slice(-5);
-    const openIssues = memory.sessions
-      .flatMap((s) => s.known_issues)
-      .filter((issue, i, arr) => arr.indexOf(issue) === i);
+  const cloud = new CloudClient(root);
 
-    const response = {
-      project_identity: memory.project_identity,
-      summary: memory.summary,
-      last_5_sessions: last5.map((s) => ({
-        session_id: s.session_id,
-        timestamp: s.timestamp,
-        ai_agent: s.ai_agent,
-        current_phase: s.current_phase,
-        progress: s.progress,
-        last_session_summary: s.last_session_summary,
-        next_steps: s.next_steps,
-      })),
-      open_issues: openIssues,
-    };
-
+  if (cloud.requiresApiKey) {
     return {
-      content: [{ type: "text" as const, text: JSON.stringify(response, null, 2) }],
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify({
+            error: "API key required for cloud-first mode.",
+            help: "Get your key at https://buiry.vercel.app/settings and set BUIRY_API_KEY in your environment.",
+            local_fallback: "Set BUIRY_API_KEY=local to use file-only mode (no cloud sync).",
+          }, null, 2),
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  try {
+    const result = await cloud.startSession();
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
     };
   } catch (err) {
     return {
@@ -68,50 +63,43 @@ export async function handleEndSession(
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  const validation = validateSession(args.session);
-  if (!validation.valid) {
+  const cloud = new CloudClient(root);
+
+  if (cloud.requiresApiKey) {
     return {
       content: [
         {
           type: "text" as const,
-          text: `Validation failed: ${validation.error}`,
+          text: JSON.stringify({
+            error: "API key required. Get one at https://buiry.vercel.app/settings",
+          }, null, 2),
         },
       ],
       isError: true,
     };
   }
 
+  const validation = validateSession(args.session);
+  if (!validation.valid) {
+    return {
+      content: [
+        { type: "text" as const, text: `Validation failed: ${validation.error}` },
+      ],
+      isError: true,
+    };
+  }
+
   try {
-    const memory = await readMemory(root);
-    memory.sessions.push(validation.session);
-    const maxSessions = memory.config?.max_sessions;
-    if (maxSessions && memory.sessions.length > maxSessions) {
-      memory.sessions = memory.sessions.slice(-maxSessions);
-    }
-    await writeMemory(root, memory);
-
-    // Auto-sync to dashboard if configured
-    let synced = false;
-    const dashboardUrl = process.env.BUIRY_DASHBOARD_URL;
-    const apiKey = process.env.BUIRY_API_KEY;
-    if (dashboardUrl && apiKey) {
-      synced = await syncSingleSession(validation.session, dashboardUrl, apiKey);
-    }
-
+    const result = await cloud.endSession(validation.session);
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              session_id: validation.session.session_id,
-              total_sessions: memory.sessions.length,
-              synced_to_dashboard: synced || undefined,
-            },
-            null,
-            2
-          ),
+          text: JSON.stringify({
+            success: result.success,
+            session_id: result.session_id,
+            stored_in: result.source,
+          }, null, 2),
         },
       ],
     };
@@ -148,42 +136,28 @@ export async function handleLogDecision(
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
+  const cloud = new CloudClient(root);
+
+  if (cloud.requiresApiKey) {
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify({ error: "API key required" }) }],
+      isError: true,
+    };
+  }
+
   try {
-    const memory = await readMemory(root);
-    if (memory.sessions.length === 0) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: "No active session found. Start a session first with buiry_start_session.",
-          },
-        ],
-        isError: true,
-      };
-    }
+    // Get active session ID from a quick start call
+    const sessionInfo = await cloud.startSession();
+    const lastSession = sessionInfo.last_5_sessions?.[0] as Record<string, unknown> | undefined;
+    const sessionId = (lastSession?.session_id as string) || "unknown";
 
-    const lastSession = memory.sessions[memory.sessions.length - 1];
-    lastSession.decisions_log.push({
-      timestamp: args.timestamp,
-      decision: args.decision,
-      rationale: args.rationale,
-      alternatives_considered: args.alternatives_considered,
-    });
+    await cloud.logDecision(sessionId, args.timestamp, args.decision, args.rationale, args.alternatives_considered);
 
-    await writeMemory(root, memory);
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              session_id: lastSession.session_id,
-              decisions_logged: lastSession.decisions_log.length,
-            },
-            null,
-            2
-          ),
+          text: JSON.stringify({ success: true, session_id: sessionId, decision: args.decision }, null, 2),
         },
       ],
     };
@@ -208,37 +182,27 @@ export async function handleFlagIssue(
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
+  const cloud = new CloudClient(root);
+
+  if (cloud.requiresApiKey) {
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify({ error: "API key required" }) }],
+      isError: true,
+    };
+  }
+
   try {
-    const memory = await readMemory(root);
-    if (memory.sessions.length === 0) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: "No active session found. Start a session first with buiry_start_session.",
-          },
-        ],
-        isError: true,
-      };
-    }
+    const sessionInfo = await cloud.startSession();
+    const lastSession = sessionInfo.last_5_sessions?.[0] as Record<string, unknown> | undefined;
+    const sessionId = (lastSession?.session_id as string) || "unknown";
 
-    const lastSession = memory.sessions[memory.sessions.length - 1];
-    lastSession.known_issues.push(args.issue);
+    await cloud.flagIssue(sessionId, args.issue);
 
-    await writeMemory(root, memory);
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              session_id: lastSession.session_id,
-              known_issues: lastSession.known_issues,
-            },
-            null,
-            2
-          ),
+          text: JSON.stringify({ success: true, session_id: sessionId, issue: args.issue }, null, 2),
         },
       ],
     };
