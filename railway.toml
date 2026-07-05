@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs-20_x"]
 
 [phases.build]
-cmds = ["npm install", "npm run build"]
+cmds = ["cd apps/api && npm install && npm run build"]
 
 [start]
 cmd = "node apps/api/dist/index.js"
