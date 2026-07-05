@@ -3,9 +3,10 @@ import { useTheme } from "../../lib/ThemeContext";
 import { useSidebar } from "./Layout";
 
 const pageNames: Record<string, string> = {
-  "/": "Dashboard",
+  "/dashboard": "Dashboard",
   "/sessions": "Sessions",
   "/datasets": "Datasets",
+  "/projects": "Projects",
   "/marketplace": "Market",
   "/docs": "Documentation",
   "/settings": "Settings",

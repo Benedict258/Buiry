@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useSidebar } from "./Layout";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: "dashboard" },
+  { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { to: "/projects", label: "Projects", icon: "folder" },
   { to: "/sessions", label: "Sessions", icon: "analytics" },
   { to: "/datasets", label: "Datasets", icon: "database" },
@@ -43,7 +43,7 @@ export default function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/"}
+              end={item.to === "/dashboard"}
               onClick={close}
               className={({ isActive }) =>
                 `flex items-center gap-sm px-md py-sm rounded-lg text-sm transition-all duration-150 ${
