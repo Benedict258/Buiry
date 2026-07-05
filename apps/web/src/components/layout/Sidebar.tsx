@@ -13,13 +13,12 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const { isOpen, close } = useSidebar();
+  const { isOpen, toggle, close } = useSidebar();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   return (
     <>
-      {/* Backdrop */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-background/50 z-30 md:hidden"
@@ -27,18 +26,25 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 w-[240px] bg-surface-container border-r border-border-subtle flex flex-col z-40 transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="px-md py-lg">
-          <h1 className="text-headline-lg font-bold text-text-primary">Buiry</h1>
-          <p className="font-meta-mono text-xs text-on-surface-variant mt-xs">
-            Own your AI's training data
-          </p>
-          <span className="inline-block w-2 h-2 rounded-full bg-status-success ml-xs align-middle" />
+        <div className="flex items-center justify-between px-md py-lg">
+          <div>
+            <h1 className="text-headline-lg font-bold text-text-primary">Buiry</h1>
+            <p className="font-meta-mono text-xs text-on-surface-variant mt-xs">
+              Own your AI's training data
+            </p>
+          </div>
+          <button
+            onClick={toggle}
+            className="text-on-surface-variant hover:text-text-primary transition-colors"
+            aria-label="Close sidebar"
+          >
+            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
         </div>
 
         <nav className="flex-1 px-sm space-y-xs">
@@ -78,9 +84,7 @@ export default function Sidebar() {
                 <span className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-text-primary">
                   {(user.name ?? user.email ?? "")[0].toUpperCase()}
                 </span>
-                <span className="truncate">
-                  {user.name ?? user.email}
-                </span>
+                <span className="truncate">{user.name ?? user.email}</span>
               </div>
 
               <button
@@ -91,9 +95,7 @@ export default function Sidebar() {
                 }}
                 className="w-full flex items-center gap-sm px-md py-sm rounded-lg text-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-150"
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  logout
-                </span>
+                <span className="material-symbols-outlined text-[20px]">logout</span>
                 Sign Out
               </button>
             </div>
@@ -105,9 +107,7 @@ export default function Sidebar() {
               }}
               className="w-full flex items-center gap-sm px-md py-sm rounded-lg text-sm text-on-surface-variant hover:bg-surface-variant transition-all duration-150"
             >
-              <span className="material-symbols-outlined text-[20px]">
-                login
-              </span>
+              <span className="material-symbols-outlined text-[20px]">login</span>
               Sign In
             </button>
           )}

@@ -18,22 +18,30 @@ export default function TopBar() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
-  const { toggle } = useSidebar();
+  const { isOpen, toggle } = useSidebar();
   const navigate = useNavigate();
   const currentPage = pageNames[location.pathname] ?? "Page";
 
   return (
-    <header className="fixed top-0 md:left-[240px] left-0 right-0 h-12 bg-surface border-b border-border-subtle flex items-center justify-between px-lg z-30">
+    <header
+      className={`fixed top-0 right-0 h-12 bg-surface border-b border-border-subtle flex items-center justify-between px-lg z-30 transition-all duration-300 ${
+        isOpen ? "left-[240px]" : "left-0"
+      }`}
+    >
       <div className="flex items-center gap-sm text-sm">
         <button
           onClick={toggle}
-          className="md:hidden text-on-surface-variant hover:text-text-primary transition-colors duration-150 mr-sm"
+          className="text-on-surface-variant hover:text-text-primary transition-colors duration-150 mr-sm"
           aria-label="Toggle sidebar"
         >
           <span className="material-symbols-outlined text-[24px]">menu</span>
         </button>
-        <span className="font-bold text-primary">Buiry</span>
-        <span className="text-outline">/</span>
+        {isOpen && (
+          <>
+            <span className="font-bold text-primary">Buiry</span>
+            <span className="text-outline">/</span>
+          </>
+        )}
         <span className="text-text-primary">{currentPage}</span>
       </div>
 
@@ -67,7 +75,10 @@ export default function TopBar() {
           <span className="material-symbols-outlined text-[20px]">notifications</span>
         </button>
 
-        <button onClick={() => navigate("/settings")} className="hidden sm:block text-on-surface-variant hover:text-text-primary transition-colors duration-150">
+        <button
+          onClick={() => navigate("/settings")}
+          className="hidden sm:block text-on-surface-variant hover:text-text-primary transition-colors duration-150"
+        >
           <span className="material-symbols-outlined text-[20px]">settings</span>
         </button>
 

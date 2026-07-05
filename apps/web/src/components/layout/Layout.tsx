@@ -10,7 +10,7 @@ interface SidebarContextType {
 }
 
 export const SidebarContext = createContext<SidebarContextType>({
-  isOpen: false,
+  isOpen: true,
   toggle: () => {},
   close: () => {},
 });
@@ -20,14 +20,14 @@ export function useSidebar() {
 }
 
 export default function Layout() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const location = useLocation();
 
   const toggle = () => setIsOpen((prev) => !prev);
   const close = () => setIsOpen(false);
 
   useEffect(() => {
-    close();
+    if (window.innerWidth < 768) close();
   }, [location.pathname]);
 
   return (
@@ -35,7 +35,12 @@ export default function Layout() {
       <div className="min-h-screen bg-background">
         <Sidebar />
         <TopBar />
-        <main className="md:ml-[240px] ml-0 pt-12 min-h-screen p-lg max-w-[1280px] mx-auto">
+        <main
+          className={`min-h-screen p-lg max-w-[1280px] mx-auto transition-all duration-300 ${
+            isOpen ? "md:ml-[240px]" : "ml-0"
+          }`}
+          style={{ paddingTop: "4rem" }}
+        >
           <Outlet />
         </main>
       </div>
