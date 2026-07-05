@@ -1,6 +1,6 @@
 # Buiry — YouTube Video Script
 
-**Hackathon:** Kaggle AI Agents Hackathon — Freestyle Track
+**Hackathon:** AI Agents: Intensive Vibe Coding Capstone Project
 **Project:** Buiry — BUild context memoRY
 **Duration:** 5:00 max
 **Speaking Rate:** ~150 words/min
@@ -54,7 +54,7 @@ RIGHT TERMINAL (Developer):
 
 ## [0:50 – 1:30] The Solution
 
-**Screen:** Buiry dashboard loads. Hero card animates in at the top.
+**Screen:** Buiry dashboard loads. Hero card animates in at the top. Stats row shows live data.
 
 ```
 Hero Card:
@@ -62,23 +62,23 @@ Hero Card:
   "Resuming work on MCP Server integration"
 
 Stats Row:
-  Phase: MCP Server | Progress: 65% | Open Issues: 3 | Active Agents: 2
+  Phase: MCP Server | Progress: 65% | Open Issues: 3
 ```
 
-Below, a project timeline shows connected session dots. One pulses green — "active."
+Below, a project timeline shows connected session dots. One pulses green — "active." 14 LLM adapter icons appear around the edges — Anthropic, OpenAI, Gemini, Groq, and more.
 
 **Voiceover:**
-> Buiry gives your agents persistent memory. One command at session start, and your agent knows everything — every decision, every error, every next step.
+> Buiry gives your agents persistent memory. One command at session start, and your agent knows everything — every decision, every error, every next step. It works across 14 LLM providers through our SDK, and 9 tools through our MCP server. Your agents never lose context again.
 
-**Word count:** ~30 words | **Time:** ~12 sec
+**Word count:** ~42 words | **Time:** ~17 sec
 
 **Transition:** Cursor clicks "Session Explorer" in the sidebar.
 
 ---
 
-## [1:30 – 2:30] Session Explorer
+## [1:30 – 2:15] Session Explorer & Export
 
-**Screen:** Session Explorer panel slides in. Left side shows a vertical timeline with 6 session cards grouped under "Today" and "Yesterday."
+**Screen:** Session Explorer panel slides in. Left side shows a vertical timeline with session cards. Right panel expands to show decisions, errors, and next steps.
 
 ```
 Today
@@ -86,155 +86,148 @@ Today
   Session #46  ✓ Done    — Auth module refactor
   Session #45  ✓ Done    — Fix rate limiter bug
 
-Yesterday
-  Session #44  ✓ Done    — Set up project structure
-  Session #43  ✓ Done    — Initial research & planning
-  Session #42  ✗ Failed  — Database migration attempt
-```
-
-Cursor clicks Session #47. Right panel expands to show:
-
-```
 Decisions Made:
   - Use Zod for MCP tool input validation
-  - Store context memos in SQLite, not Postgres
+  - Store context memos in PostgreSQL, fallback to file
 
 Errors Encountered:
   - MCP handshake timeout at 5s — fixed by adding retry logic
 
 Next Steps:
   - Implement search endpoint
-  - Add session expiry (30 min TTL)
-
-Code Changes:
-  - src/mcp/server.ts — added tool registration
-  - src/db/schema.ts — added ContextMemo table
 ```
 
+Cursor clicks "Export Logs" button. A dropdown appears: JSON, CSV, TXT. User selects JSON — download begins. Sonner notification appears: "Session log exported as JSON."
+
 **Voiceover:**
-> Every session is logged. Every decision recorded. Every error tracked. You can see exactly what happened, when, and why.
+> Every session is logged. Every decision recorded. Every error tracked. Export logs as JSON, CSV, or TXT for your records. The sidebar toggles on any screen size, so you can work anywhere.
 
-**Word count:** ~28 words | **Time:** ~11 sec
+**Word count:** ~35 words | **Time:** ~14 sec
 
-**Transition:** Cursor moves to the top search bar. Cmd+K opens.
+**Transition:** Cursor moves to the top search bar. Cmd+K opens the command palette.
 
 ---
 
-## [2:30 – 3:15] Context Search
+## [2:15 – 2:55] Context Search
 
 **Screen:** Command palette opens center-screen. User types: `what approach did we take for auth?`
 
-Results appear instantly:
+Results appear instantly with relevance scores:
 
 ```
 1. Session #32 — 92% match
    "Decided on JWT with httpOnly cookies. Refresh tokens
-    stored in memory, not localStorage. Chose jose library
-    over jsonwebtoken for ESM compatibility."
-   — 4 decisions, 12 code changes
+    stored in memory, not localStorage."
 
 2. Session #28 — 74% match
    "Evaluated auth0 vs custom. Going custom for
     full control over token lifecycle."
-   — 2 decisions, 3 code changes
 
 3. Session #19 — 61% match
    "Initial auth research. Compared OAuth2 flows."
-   — 1 decision, 0 code changes
 ```
 
-Cursor clicks the first result. Session #32 detail view opens, highlighting the auth decision block.
-
 **Voiceover:**
-> Semantic search across all memory. Find any decision, any time. No more "what did we do last week?"
+> Search across all sessions instantly. Find any decision, any error, any next step. No more "what did we do last week?"
 
-**Word count:** ~25 words | **Time:** ~10 sec
+**Word count:** ~22 words | **Time:** ~9 sec
 
-**Transition:** Hard cut to a terminal window.
+**Transition:** Hard cut to a terminal showing ADK agent orchestration.
 
 ---
 
-## [3:15 – 4:00] ADK Agents
+## [2:55 – 3:40] ADK Agents & Bridge
 
-**Screen:** Terminal showing ADK agent orchestration logs. Four agents run in parallel with colored output.
+**Screen:** Terminal showing ADK agent orchestration with the Bridge server. Seven agents run in sequence.
 
 ```
-[CoordinatorAgent] buiry_start_session --context "MCP Server integration"
-  → Retrieved: 3 past sessions, 7 decisions, 2 open issues
-  → Context memo loaded (4.2KB)
+[IntentRouter] → "log_decision"
+  Analyzing: "We decided to use TypeScript for the SDK"
 
-[CoordinatorAgent] → DevAgent: "Implement search endpoint for context memos"
-  [DevAgent] Writing src/mcp/tools/search.ts
-  [DevAgent] Added Zod schema for query input
-  [DevAgent] Implemented SQLite FTS5 full-text search
+[ContextGuardian] Scanning for PII...
+  ✅ No sensitive data detected
 
-[CoordinatorAgent] → ReviewAgent: "Review search implementation"
-  [ReviewAgent] Cross-checking against past decisions...
-  [ReviewAgent] ✅ Consistent with Session #45 (use FTS5, not LIKE)
-  [ReviewAgent] ⚠️ Missing: rate limiting — Session #38 decided on 100 req/min
+[DatasetGenerator] Classifying interactions...
+  → behavioral_patterns (12), decision_sequences (8)
 
-[CoordinatorAgent] → DevAgent: "Add rate limiting per Session #38 decision"
-  [DevAgent] Added rate limiter middleware (100 req/min)
+[QualityAuditor] Auditing dataset...
+  Score: 87/100 → APPROVE
 
-[CoordinatorAgent] buiry_end_session --summary "Search endpoint implemented with FTS5 + rate limiting"
-  → Memory updated: 1 new decision, 3 code changes logged
+[SessionAnalyst] Analyzing session...
+  → 3 patterns identified, 0 blockers
+
+[ContractGuardian] Validating Sui transaction...
+  ✅ revenue_vault distribution valid
+
+ADK Bridge server (port 8765) — 7 agents running
 ```
 
 **Voiceover:**
-> Multi-agent system with shared memory. The Coordinator orchestrates. The DevAgent implements. The ReviewAgent cross-checks. They collaborate, disagree, and resolve conflicts — all using Buiry memory.
+> Ten agents, seven active — all powered by Gemini. The ADK Bridge server connects our TypeScript pipeline to Python agents. PII scanning, dataset classification, quality auditing — agents collaborate through shared memory and produce results no single agent could achieve alone.
 
 **Word count:** ~38 words | **Time:** ~15 sec
 
-**Transition:** Terminal shrinks into the center of a clean diagram.
+**Transition:** Terminal shrinks into an architecture diagram.
 
 ---
 
-## [4:00 – 4:30] Architecture
+## [3:40 – 4:20] Architecture & Security
 
-**Screen:** Minimal architecture diagram builds in three layers, each animating in with a subtle scale-up.
+**Screen:** Architecture diagram builds layer by layer:
 
 ```
-┌─────────────────────────────────────────────┐
-│            React Dashboard (11 screens)      │
-│   Session Explorer · Context Search · Stats  │
-├─────────────────────────────────────────────┤
-│            ADK Agents (Google ADK)           │
-│  CoordinatorAgent · DevAgent · ReviewAgent   │
-├─────────────────────────────────────────────┤
-│          MCP Server (npx buiry-mcp)          │
-│     start_session · end_session · search     │
-│          SQLite + FTS5 + Vector Search       │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│         React Frontend (10 pages)                │
+│   Dashboard · Sessions · Datasets · Settings      │
+│   Sonner notifications · Export logs · Sidebar    │
+│            Deployed on Vercel                     │
+├─────────────────────────────────────────────────┤
+│         Express API (29 routes, 10 groups)        │
+│   Auth (SHA-256) · Rate limiting · PostgreSQL     │
+│            Deployed on Railway                    │
+├─────────────────────────────────────────────────┤
+│         ADK Agents (7 working, Gemini)            │
+│   Bridge server · BuirySkill · ContractGuardian   │
+├─────────────────────────────────────────────────┤
+│         MCP Server (9 tools)                      │
+│   @buiry/mcp@0.1.3 · Cloud-first architecture     │
+├─────────────────────────────────────────────────┤
+│         Blockchain Layer                          │
+│   Sui Move contracts · Walrus SEAL encryption     │
+│   4 contracts on testnet · Real transactions      │
+└─────────────────────────────────────────────────┘
 ```
-
-Each layer highlights as the voiceover mentions it.
 
 **Voiceover:**
-> Three layers. MCP server for persistent memory. ADK agents for multi-agent orchestration. React dashboard for visualization.
+> Four layers. React frontend on Vercel. Express API on Railway with SHA-256 auth and rate limiting. ADK agents powered by Gemini. MCP server with nine tools. And blockchain contracts on Sui testnet with SEAL-encrypted storage.
 
-**Word count:** ~24 words | **Time:** ~10 sec
+**Word count:** ~32 words | **Time:** ~13 sec
 
-**Transition:** Diagram fades into the dashboard hero view.
+**Transition:** Diagram fades into the live dashboard.
 
 ---
 
-## [4:30 – 5:00] Closing
+## [4:20 – 5:00] Closing
 
-**Screen:** Dashboard fills the screen. Stats animate up: "47 sessions · 312 decisions · 1,847 code changes." Logo fades in over the dashboard.
+**Screen:** Dashboard fills the screen. Stats animate up. Activity graph shows sinusoidal pattern of session activity. Live URLs appear.
 
 ```
 Buiry — Your Agents Never Forget Again
 
-github.com/Benedict258/Buiry
-Kaggle AI Agents Hackathon — Freestyle Track
+Live: https://buiry.vercel.app
+API:  https://buiry.up.railway.app
+
+14 LLM adapters · 9 MCP tools · 10 ADK agents
+29 API routes · 4 Sui contracts · 10 frontend pages
+244+ source files across 6 packages
 ```
 
 **Voiceover:**
-> Buiry. Persistent memory for AI coding agents. Open source. Built for the Kaggle AI Agents hackathon.
+> Buiry. Persistent memory for AI coding agents. Open source. Built for the Kaggle AI Agents capstone.
 
-**Word count:** ~22 words | **Time:** ~9 sec
+**Word count:** ~20 words | **Time:** ~8 sec
 
-**Transition:** Fade to black. Hold on GitHub URL for 3 seconds.
+**Transition:** Fade to black.
 
 ---
 
@@ -244,13 +237,13 @@ Kaggle AI Agents Hackathon — Freestyle Track
 |---|---|---|---|---|
 | Title Card | 0:00 | 0:10 | 10s | — |
 | The Problem | 0:10 | 0:50 | 40s | 45 |
-| The Solution | 0:50 | 1:30 | 40s | 30 |
-| Session Explorer | 1:30 | 2:30 | 60s | 28 |
-| Context Search | 2:30 | 3:15 | 45s | 25 |
-| ADK Agents | 3:15 | 4:00 | 45s | 38 |
-| Architecture | 4:00 | 4:30 | 30s | 24 |
-| Closing | 4:30 | 5:00 | 30s | 22 |
-| **Total** | | | **5:00** | **212** |
+| The Solution | 0:50 | 1:30 | 40s | 42 |
+| Session Explorer | 1:30 | 2:15 | 45s | 35 |
+| Context Search | 2:15 | 2:55 | 40s | 22 |
+| ADK Agents & Bridge | 2:55 | 3:40 | 45s | 38 |
+| Architecture & Security | 3:40 | 4:20 | 40s | 32 |
+| Closing | 4:20 | 5:00 | 40s | 20 |
+| **Total** | | | **5:00** | **234** |
 
-**Total voiceover words:** 212
-**Estimated speaking time:** ~85 seconds of narration across 5 minutes (ample room for pauses and transitions)
+**Total voiceover words:** 234
+**Estimated speaking time:** ~94 seconds of narration across 5 minutes (ample room for pauses and transitions)

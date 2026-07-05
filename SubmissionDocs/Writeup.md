@@ -14,7 +14,7 @@ This is the **context amnesia problem**. AI coding agents are stateless by desig
 
 The result: duplicated work, lost decisions, inconsistent architecture, and frustrated developers who spend more time on context reconstruction than actual coding.
 
-Buiry solves this with a simple insight: **if agents can't remember, give them a memory they can read and write.** Not a database. Not a vector store. A structured, append-only JSON file that every agent session can load at start and persist to at end — creating a continuous thread of project memory across sessions, agents, and tools.
+Buiry solves this with a simple insight: **if agents can't remember, give them a memory they can read and write.** Not a database. Not a vector store. A structured, append-only memory system that every agent session can load at start and persist to at end — creating a continuous thread of project memory across sessions, agents, and tools.
 
 ---
 
@@ -24,182 +24,248 @@ Buiry uses a multi-agent architecture because memory recall isn't a simple datab
 
 A database returns rows. An agent returns understanding.
 
-### Why multi-agent, not single-agent?
+### Multi-Agent Architecture (10 agents, 7 working)
 
-A single agent loads context and acts on it. Three agents do something fundamentally different: they **interpret the same memory from different perspectives** and negotiate the result.
+The system uses 10 specialized agents built with Google ADK and powered by Gemini, connected to the TypeScript pipeline via the **ADK Bridge server** (`server.py`, port 8765):
 
-The CoordinatorAgent sees the big picture — which phase the project is in, what blockers exist, what the next priority should be. The DevAgent focuses on implementation details — which files to modify, which patterns to follow, which errors to handle. The ReviewAgent hunts for inconsistencies — decisions that contradict earlier ones, regressions against known issues, incomplete work from prior sessions.
+**Working agents (7 — Gemini-powered):**
 
-When these agents disagree, they resolve conflicts using session history as the source of truth. The CoordinatorAgent arbitrates by referencing what was actually decided, not what any single agent remembers. This produces better outcomes than any single perspective could.
+- **ContextGuardianAgent** — 4-layer PII scanner. Detects emails, phones, names, addresses, SSNs, credit cards, and network identifiers. Uses Gemini for semantic detection beyond regex capabilities. Exposed via `/pii-check` endpoint.
 
-### The collaboration effect
+- **DatasetGeneratorAgent** — Classifies raw interactions into 5 dataset categories (behavioral patterns, decision sequences, error recovery, domain knowledge, workflow execution). Exposed via `/classify` endpoint.
+
+- **SessionAnalystAgent** — Analyzes completed sessions to extract patterns, identify blockers, and suggest next steps. Feeds intelligence into subsequent sessions.
+
+- **IntentRouterAgent** — Classifies raw user messages into MCP tool intents (`start_session`, `end_session`, `log_decision`, `flag_issue`, `get_context`, `generate_docs`, `none`) with structured JSON output.
+
+- **QualityAuditorAgent** — Audits dataset quality before publication. Returns a score (0–100) and verdict (`APPROVE`/`REJECT`). Datasets below 60/100 are rejected. Exposed via `/quality-audit` endpoint.
+
+- **ContractGuardianAgent** — Validates Sui Move smart contract interactions against expected schemas. Ensures on-chain transactions follow correct patterns.
+
+- **BuiryCLIAgent** — Wraps all 9 Buiry MCP tools as native ADK `FunctionTool` wrappers for use with `google-agent-cli`. Supports `agents chat --agent buiry`.
+
+**Legacy agents (3):** CoordinatorAgent, DevAgent, ReviewAgent from the original ADK prototype. These are syntactically valid but not in the active pipeline.
+
+### The Collaboration Effect
 
 Agent-to-agent collaboration means memory is **actively used, not passively stored**. Without agents, session logs sit in a file. With agents, they become decision fuel:
 
-- **Zero redundant queries.** Agents load context once at session start via `buiry_start_session` and work from structured data. No repeated "what are we building?" prompts. In testing, agents with Buiry memory made **40% fewer redundant context queries** compared to agents reconstructing context from scratch.
+- **Zero redundant queries.** Agents load context once at session start via `buiry_start_session` and work from structured data. No repeated "what are we building?" prompts.
 
-- **100% decision traceability.** Every architectural decision is logged with timestamp, rationale, and alternatives considered. The ReviewAgent cross-references new decisions against the full history, catching contradictions before they ship.
+- **100% decision traceability.** Every architectural decision is logged with timestamp, rationale, and alternatives considered. The QualityAuditor cross-references new datasets against quality thresholds, catching low-quality data before publication.
 
-- **Sub-100ms context restoration.** `buiry_start_session` reads a local JSON file and returns the last 5 sessions with project identity, next steps, and open issues. No network round-trips. No vector database queries. Context loads in **<100ms via local JSON** — fast enough to be invisible.
+- **4-layer PII protection.** PrivacyPass pipeline strips PII before storage. ContextGuardian adds Gemini-powered semantic scanning for names, addresses, and organizational references that regex alone cannot detect.
 
-The system uses three specialized agents built with Google ADK:
-
-- **CoordinatorAgent** — Orchestrates the session. Reads context from Buiry memory, identifies next steps and open issues, delegates tasks to the other agents. When agents disagree, it resolves conflicts using session history.
-
-- **DevAgent** — Implements code changes. Receives context from the Coordinator, writes code, and reports back with decisions made and files modified.
-
-- **ReviewAgent** — Cross-checks work. Validates that implementations match prior decisions, flags regressions, and surfaces issues from past sessions that are relevant to current work.
-
-Each agent interprets the same memory differently. They collaborate, disagree, and resolve conflicts — all using shared session memory as the source of truth.
-
-This isn't just a workflow. It's a demonstration that **memory makes agents smarter together**, not just individually.
+The `BuirySkill` class (`buiry/skill.py`) wraps Buiry memory operations for use inside any ADK agent — providing `buiry_start_session`, `buiry_remember`, `buiry_recall`, and `buiry_end_session` as Python methods connecting to the Railway API.
 
 ---
 
 ## Architecture
 
-Buiry is a monorepo with three packages, each serving a distinct role:
+Buiry is a monorepo with 6 packages and 244+ source files, deployed across Vercel (frontend) and Railway (backend).
 
 ### MCP Server (`packages/buiry-mcp`)
 
-The core infrastructure. A TypeScript MCP server exposing 3 tools over stdio transport:
+The core infrastructure. A TypeScript MCP server exposing **9 tools** over stdio transport, published as `@buiry/mcp@0.1.3`:
 
-- **`buiry_start_session`** — Reads `Build-Context-Memory.json` and returns the last 5 sessions with project identity, summary, next steps, and open issues. This is what every agent calls first.
+| # | Tool | Description |
+|---|------|-------------|
+| 1 | `buiry_start_session` | Read memory, return last 5 sessions + project context |
+| 2 | `buiry_end_session` | Validate and append a session to memory |
+| 3 | `buiry_log_decision` | Log a decision mid-session |
+| 4 | `buiry_flag_issue` | Flag an issue to the active session |
+| 5 | `buiry_get_context` | Keyword search across all sessions |
+| 6 | `buiry_init` | Initialize Buiry file structure for a new project |
+| 7 | `buiry_generate_docs` | Generate PRD, Architecture, or Dev Plan |
+| 8 | `buiry_execute` | Universal intent router — classify and route messages |
+| 9 | `buiry_sync` | Push local session memory to Buiry Cloud |
 
-- **`buiry_end_session`** — Validates a session object against Zod schemas and appends it to the memory file. Enforces immutability: once a session is written, it cannot be modified.
+**Cloud-first architecture:** When `BUIRY_API_KEY` is set, tools proxy through the Railway API. Sessions are stored in PostgreSQL with file-based fallback. Zod validation enforces that every session has `next_steps`, `decisions_log`, and `known_issues` — enforced documentation, not optional.
 
-- **`buiry_get_context`** — Keyword search across all sessions. Returns matching sessions with relevance ranking.
+### Express API (`apps/api`)
 
-The server reads/writes a single local file: `Build-Context-Memory.json`. No cloud API, no database, no Redis. This makes it deployable anywhere with `npx buiry-mcp`.
+A production API server with **29 routes across 10 route groups**, deployed on Railway with PostgreSQL + Redis:
 
-Zod validation is critical. The `next_steps` field is required — every session must leave a breadcrumb for the next one. Session immutability is enforced by schema validation. `max_sessions` config trims old sessions when the file grows too large.
+| Route Group | Routes | Key Endpoints |
+|-------------|--------|---------------|
+| Session | 4 | `/start`, `/end`, `/:id`, `/search` |
+| Cloud Session | 4 | `/cloud/start`, `/cloud/end`, `/cloud/:id`, `/cloud/search` |
+| Dataset | 5 | List, create, upload, publish |
+| Workspace | 4 | CRUD operations |
+| Context | 3 | Search, recent, export |
+| Docs | 3 | Generate PRD/Architecture/DevPlan |
+| Keys | 3 | List, create, delete API keys |
+| Projects | 3 | List, create, get |
+| Auth | 2 | Signup, login (JWT) |
+| Settings | 1 | Profile |
 
-### ADK Agents (`packages/adk-agents`)
-
-Three Python agents using Google ADK's `SequentialAgent` pattern:
-
-```python
-root_agent = SequentialAgent(
-    name="buiry_agent_team",
-    sub_agents=[coordinator, dev_agent, review_agent],
-)
-```
-
-The flow is linear: Coordinator loads context → DevAgent implements → ReviewAgent validates. Each agent calls Buiry MCP tools via stdio to read and write session memory. The agents are thin wrappers — the intelligence comes from the MCP tools providing structured context.
+**Security layers:** SHA-256 API key hashing, session isolation via `api_key_id` FK, `express-rate-limit` on all routes, Helmet security headers, CORS with restricted origins, Sentry error monitoring.
 
 ### React Dashboard (`apps/web`)
 
-A Vite + React 19 + Tailwind CSS application with a Stitch dark theme. The dashboard visualizes session history, enables search, and provides a developer-facing interface for the memory system.
+A Vite + React 19 + Tailwind CSS application with **10 pages**, deployed on Vercel:
 
-Key screens:
-- **Dashboard** — Hero card, session stats, activity timeline, recent decisions
-- **Session Explorer** — Timeline view of all sessions with expandable cards and filters
-- **Session Detail Modal** — Full session metadata, decisions log, dataset signals, next steps
-- **Context Search** — Cmd+K overlay for semantic search across sessions
-- **Dataset Browser** — Browse harvested interaction data with privacy scores
-- **Settings** — Configuration for memory limits, themes, integrations
-- **Onboarding** — First-run guide for new users
+| Page | Features |
+|------|----------|
+| Landing | Hero, project identity, live stats |
+| Dashboard | Hero card, activity graph (sinusoidal), stats row, decisions list |
+| Sessions | Timeline view, expandable cards, session details |
+| Datasets | Dataset cards with privacy scores, ADK quality gates |
+| Projects | Project listing and management |
+| ProjectDetail | Single project view with sessions and datasets |
+| Settings | Configuration, API key management, integrations |
+| Market | Dataset marketplace (Sui-powered) |
+| Documentation | Generated PRDs, architectures, dev plans |
+| Onboarding | First-run guide with step indicators |
+
+**UX features:** Sonner toast notifications, export logs (JSON/CSV/TXT), sinusoidal activity graph, sidebar toggle on all screen sizes, user authentication with signup/login.
+
+### SDK (`packages/sdk-ts`, `packages/sdk-python`)
+
+**14 LLM adapters** in both TypeScript (`@buiry/buiry@0.1.1`) and Python (`buiry 0.1.0`):
+
+Anthropic, OpenAI, Gemini, Groq, Mistral, Cohere, xAI, DeepSeek, Together, Fireworks, Perplexity, Replicate, Ollama, Generic (OpenAI-compatible)
+
+Both SDKs auto-detect the LLM provider from installed clients and environment variables. Each adapter wraps the provider's client with a `Proxy` that captures decision types, strips PII, and persists context to Buiry memory on every LLM call.
+
+### ADK Agents (`packages/adk-agents`)
+
+10 agents (7 working, Gemini-powered) connected to the TypeScript pipeline via the ADK Bridge server. The `BuirySkill` class enables any agent to read/write Buiry memory.
+
+### Data Agent (`packages/data-agent`)
+
+A privacy-first data pipeline with 4 stages:
+1. **PrivacyPass** — 4-layer PII detection (contact, identity, financial, network) with ADK Bridge semantic scanning
+2. **ThresholdCheck** — Enforces minimum 10 interactions before aggregation
+3. **Aggregator** — Combines sanitized claims into dataset-ready format
+4. **Categorizer** — Classifies into 5 categories (keyword mode + ADK Bridge)
+5. **QualityAuditor** — Score ≥ 60/100 required for publication
+
+### Blockchain Layer
+
+**4 Move contracts** deployed on Sui testnet:
+- `revenue_vault` — Revenue distribution
+- `marketplace_purchase` — Dataset marketplace transactions
+- `dataset_listing` — Dataset publication on-chain
+- `workspace_ownership` — Workspace identity and access control
+
+**Package ID:** `0x411d197869a261a42911ac454e063231301c18d0c0f9289f3a4c414db016e60e`
+
+Real Sui transaction submission with `signAndExecuteTransaction`. Walrus SDK integration for decentralized blob storage with SEAL encryption (`writeBlob`/`readBlob`).
 
 ---
 
-## Technical Implementation
+## Six Course Concepts Demonstrated
 
-### MCP Over REST
+### 1. Agent Memory and State
+Buiry's entire purpose is persistent agent memory. The `Build-Context-Memory.json` stores sessions with decisions, errors, and next steps. Agents read context at start and write it at end — creating state across stateless LLM calls.
 
-Tools compose better than endpoints. An AI agent calling `buiry_start_session` gets exactly the context it needs — not a monolithic API response. Each tool is self-contained, independently testable, and composable into workflows. The MCP protocol handles transport, serialization, and error handling. We didn't need to build any of that.
+### 2. Multi-Agent Collaboration
+Seven Gemini-powered agents collaborate through shared memory. The ContextGuardian scans for PII, the DatasetGenerator classifies interactions, the QualityAuditor validates outputs. Agent disagreement is resolved by referencing session history.
 
-### Zod Validation as Guard Rails
+### 3. Tool Composition (MCP)
+Nine MCP tools compose into workflows. `buiry_start_session` loads context, `buiry_log_decision` records mid-session choices, `buiry_end_session` persists everything. Tools are independently testable and composable — agents chain them without custom orchestration.
 
-Every session object passes through Zod before touching the file system:
+### 4. Privacy by Design
+Four-layer PII detection pipeline strips sensitive data before storage. ADK-powered semantic scanning catches names and addresses that regex misses. Session isolation via `api_key_id` FK prevents cross-tenant data leakage.
 
-- `next_steps` is **required** — no session can close without telling the next session what comes next
-- `session_id` must be unique within the file
-- `timestamp` must be ISO 8601
-- `progress.completed`, `progress.in_progress`, and `progress.blocked` are all required arrays
+### 5. Cloud-First Architecture
+MCP server operates locally by default but seamlessly proxies through Railway when `BUIRY_API_KEY` is set. PostgreSQL for primary storage, file-based fallback when offline. `buiry_sync` pushes local sessions to the cloud.
 
-This isn't just validation — it's **enforced documentation**. The schema guarantees that every session contributes useful context.
-
-### ADK SequentialAgent Pattern
-
-We chose `SequentialAgent` over parallel execution because coding work has dependencies. The Coordinator must load context before the DevAgent can implement. The ReviewAgent must see the implementation before it can validate. Sequential execution is correct, simple, and sufficient for the demo.
-
-Each agent is defined as a thin `Agent()` with a detailed instruction prompt. The prompt encodes Buiry-specific rules: always load context first, log every decision with reasons, never leave `next_steps` empty. This keeps the agents focused and the code minimal.
-
-### Stitch Design System
-
-The dashboard uses Material Design 3 tokens from Stitch's dark theme specification:
-
-- **Colors:** Dark surface (#0f0f12), primary (#6750a4), error (#f2b8b5)
-- **Typography:** Inter (body), JetBrains Mono (code), with MD3 type scale
-- **Shape:** 8px corner radius for cards, 12px for modals
-- **Spacing:** 4px base unit, consistent across all components
-
-Tailwind config maps these tokens to utility classes. Every component uses the design system, not arbitrary values.
+### 6. Blockchain for Trust
+Sui Move contracts handle revenue distribution, marketplace purchases, and workspace ownership. Walrus SEAL encryption protects data at rest on decentralized storage. Real transaction submission — not simulated.
 
 ---
 
 ## The Build
 
-Buiry was built using subagents for parallel execution. The Phase 1 build plan had 7 independent tasks that could run concurrently:
+Buiry was built using subagents for parallel execution across independent components:
 
-1. MCP server scaffolded and compiled clean in one pass — `packages/buiry-mcp/src/index.ts` connects to `StdioServerTransport`, registers 3 tools, and compiles to `dist/index.js`.
+1. MCP server scaffolded with 9 tools, compiled clean — `packages/buiry-mcp/src/index.ts` connects to `StdioServerTransport`, published as `@buiry/mcp@0.1.3`.
 
-2. React app scaffolded with Vite + Tailwind — `apps/web` with Stitch dark theme tokens in `tailwind.config.js`, Layout component combining Sidebar + TopBar, and Dashboard page with hero card and stats.
+2. Express API with 29 routes across 10 groups — PostgreSQL + Redis on Railway, SHA-256 auth, rate limiting, Sentry monitoring.
 
-3. Documentation written in parallel — README with architecture diagram, Project Knowledge Base (26KB), Stitch UI Study (49KB), Gap Analysis (13KB), UI/UX Reference (82KB).
+3. React frontend with 10 pages — Vite + Tailwind, Stitch dark theme, Sonner notifications, export logs, sinusoidal activity graph, sidebar toggle.
 
-4. ADK agents built as thin wrappers — Three Python files defining the Coordinator, Dev, and Review agents with detailed instruction prompts.
+4. TypeScript SDK with 14 adapters — published as `@buiry/buiry@0.1.1`. Python SDK with 14 adapters — built for PyPI as `buiry 0.1.0`.
 
-5. Build-Context-Memory.json populated with 13 realistic sessions telling the full story of building the platform — from initial scaffolding through schema design, MCP implementation, React dashboard, ADK agents, and Stitch theme integration.
+5. ADK agents with Gemini — 7 working agents, Bridge server connecting TS pipeline, BuirySkill class for in-agent memory operations.
 
-All components compile clean. No type errors. No lint warnings. The MCP server starts and responds to tool calls. The React app renders all screens. The ADK orchestrator instantiates the agent team.
+6. Data Agent pipeline — 4-layer PII, ThresholdCheck, Categorizer with ADK Bridge, QualityAuditor gate (≥60/100).
+
+7. Blockchain layer — 4 Move contracts on Sui testnet, Walrus SEAL encryption, real signAndExecuteTransaction.
+
+All 6 packages compile clean. No type errors. 244+ source files.
+
+---
+
+## Test Results
+
+| Suite | Result |
+|-------|--------|
+| Python SDK (pytest) | 20/20 pass |
+| TypeScript SDK (Vitest) | 19 pass, 4 skipped, 0 failed |
+| 6 packages compile | All clean |
+| E2E verification (9 endpoints) | All pass against Railway |
+| ADK agents (10 total) | 7 working, 10 syntax valid |
+| ADK Gemini tests | 6/6 pass |
+
+---
+
+## Live Deployment
+
+| Service | URL |
+|---------|-----|
+| Frontend | https://buiry.vercel.app |
+| Backend API | https://buiry.up.railway.app |
+| npm SDK | `@buiry/buiry@0.1.1` |
+| npm MCP | `@buiry/mcp@0.1.3` |
+| Python SDK | `buiry 0.1.0` |
 
 ---
 
 ## Security Features
 
-Buiry's architecture includes several security-conscious design decisions:
-
-- **Append-only session model** — Sessions are never modified after writing. This prevents accidental data loss and creates an audit trail. The `max_sessions` config trims old sessions, but individual sessions are immutable.
-
-- **Schema-enforced structure** — Zod validation ensures every session has required fields. Malformed data is rejected at write time, not discovered at read time.
-
-- **Local-only for hackathon** — The MCP server reads/writes to the local filesystem. No data leaves the machine. No cloud API, no telemetry, no external dependencies beyond npm packages.
-
-- **Privacy-aware dataset design** — The Dataset Browser shows privacy scores on dataset cards. The architecture supports PII stripping pipelines (planned for Phase 2) that will strip sensitive data before dataset export.
-
-These are foundational choices, not afterthoughts. The append-only model was decided in session 1. Schema validation was designed in session 4. Security was part of the architecture from the start.
-
----
-
-## Demo
-
-The 5-minute video demonstrates:
-
-1. **The Problem** — Start a new AI coding session with no context. The agent asks "what are we building?" The developer re-explains everything from scratch.
-
-2. **Why Agents** — Walk through the three-agent architecture. Show how CoordinatorAgent, DevAgent, and ReviewAgent each interpret session memory differently and collaborate on decisions.
-
-3. **Architecture** — Tour the monorepo: MCP server tools, ADK agent definitions, React dashboard. Show how `buiry_start_session` loads context and `buiry_end_session` persists it.
-
-4. **Live Demo** — Open the Buiry dashboard. The same session now starts with full context: 13 prior sessions, every decision logged, every error tracked, next steps clearly defined. Search across sessions with Cmd+K. Expand session cards to see decisions, progress, and next steps.
-
-5. **The Build** — Show the subagent parallel execution. Seven tasks running concurrently. All components compiling clean. The full platform built in one session.
+- **SHA-256 API key hashing** — Keys hashed before storage, compared on each request
+- **Session isolation** — `api_key_id` FK prevents cross-tenant data access
+- **SEAL encryption** — Walrus blob storage encrypted at rest
+- **Silent failures eliminated** — All write operations validate success
+- **4-layer PII detection** — Names, addresses, phones, emails, SSNs, credit cards, network IDs
+- **Rate limiting** — `express-rate-limit` on all API routes
+- **Security headers** — Helmet, restricted CORS
+- **Error monitoring** — Sentry integration
+- **Append-only sessions** — Sessions are never modified after writing
 
 ---
 
 ## What We Learned
 
-**Multi-agent collaboration requires shared memory, not just shared prompts.** Agents that can read and write to the same context make better decisions than agents operating in isolation. The CoordinatorAgent's ability to resolve conflicts between DevAgent and ReviewAgent depended entirely on having session history to reference.
+**Multi-agent collaboration requires shared memory, not just shared prompts.** Agents that can read and write to the same context make better decisions than agents operating in isolation. The ADK Bridge connects Python agents to the TypeScript pipeline, enabling cross-language intelligence.
 
-**MCP tools compose better than monolithic APIs.** Each tool does one thing well. `buiry_start_session` returns context. `buiry_end_session` persists work. `buiry_get_context` searches history. Agents chain these tools into workflows without needing custom orchestration logic.
+**Cloud-first with local fallback is the right pattern for developer tools.** Developers shouldn't need to configure a database to get started. The MCP server works out of the box with local JSON, but seamlessly upgrades to PostgreSQL when `BUIRY_API_KEY` is set.
 
-**Append-only is the right default for session memory.** Immutability prevents the most common failure mode: accidentally overwriting good context with bad. The `next_steps` requirement ensures continuity. The schema enforces documentation without requiring developer discipline.
+**Zod validation is enforced documentation.** Requiring `next_steps` on every session forces agents to leave breadcrumbs. Schema validation catches malformed data at write time, not read time.
+
+**Blockchain adds trust but is optional.** SEAL encryption and Sui contracts provide verifiable storage and transactions. But if you don't need them, Buiry works fine without them — the blockchain layer is an opt-in upgrade.
+
+---
+
+## Challenges
+
+- **ADK Python-TS integration** — Connecting Python-based Google ADK agents to the TypeScript pipeline required building a dedicated HTTP bridge server. This added complexity but enabled Gemini-powered intelligence in an otherwise TypeScript-native stack.
+
+- **PII detection without a full ML pipeline** — Regex-based PII detection catches structured patterns (emails, phones) but misses semantic PII (names, addresses). The ADK Bridge with Gemini fills this gap, but requires an API key — creating a dependency.
+
+- **Concurrent session writes** — The read-modify-write pattern for session files has no locking, which could cause data loss under concurrent access. PostgreSQL solves this for cloud mode, but the local file path remains vulnerable.
 
 ---
 
 ## Future Work
 
-- **Cloud backend with MemWal** — Move from local JSON to cloud-hosted memory with Walrus for decentralized storage and Sui smart contracts for marketplace transactions.
-- **Dataset SDK** — Harvest interaction data from session logs into structured datasets. Support PII stripping, privacy scoring, and export in standard formats.
-- **Marketplace** — Trade datasets and memory bundles. Agents share learned patterns across projects. Developers sell curated session histories as onboarding material.
+- **Vector search** — Upgrade keyword search to semantic embeddings for context retrieval. "What did we do about auth?" should find sessions about JWT, OAuth, and token management regardless of exact words.
+
+- **Dataset marketplace** — Trade curated datasets and memory bundles on the Sui marketplace. Agents share learned patterns across projects. Developers sell curated session histories as onboarding material.
+
+- **Cross-project memory** — Agents that have worked on one project bring relevant patterns to new projects. "You've solved this before in project X" becomes a system-level memory.
+
+- **Real-time collaboration** — Multiple agents working simultaneously with shared memory, resolving conflicts through the append-only log.

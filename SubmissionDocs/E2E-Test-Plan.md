@@ -1,174 +1,139 @@
 # Buiry E2E Test Plan
 
-## 1. MCP Server Tests
+## Overview
 
-- [ ] **1.1 Start MCP server**
-  - Run: `node packages/buiry-mcp/dist/index.js`
-  - Expected: Server prints `buiry-mcp server running on stdio` to stderr
-  - Pass: Exit code 0, no error output
+The E2E verification is performed by `e2e-verify.sh`, a bash script that tests 9 endpoints end-to-end against the live Railway deployment at `https://buiry.up.railway.app`.
 
-- [ ] **1.2 buiry_start_session — happy path**
-  - Send JSON-RPC request: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buiry_start_session","arguments":{}}}`
-  - Expected: Response contains `project_identity`, `last_5_sessions`, `open_issues`, `summary`
-  - Pass: All four top-level keys present in result content
-
-- [ ] **1.3 buiry_end_session — valid session**
-  - Send JSON-RPC request with valid session object including all required fields (session_id, timestamp, ai_agent, current_phase, progress, last_session_summary, next_steps, known_issues)
-  - Expected: Response contains `success: true`, `session_id`, `total_sessions`
-  - Pass: `isError` is not set; total_sessions incremented by 1
-
-- [ ] **1.4 buiry_end_session — empty next_steps rejected**
-  - Send JSON-RPC request with session where `next_steps: []`
-  - Expected: Validation fails with error message about next_steps
-  - Pass: `isError: true` in response
-
-- [ ] **1.5 buiry_get_context — search returns results**
-  - First add a session with summary containing the keyword "React"
-  - Send: `{"name":"buiry_get_context","arguments":{"query":"React"}}`
-  - Expected: Response contains `query`, `match_count`, `sessions` array
-  - Pass: `match_count >= 1`, sessions include the added session
-
-- [ ] **1.6 buiry_get_context — empty query rejected**
-  - Send: `{"name":"buiry_get_context","arguments":{"query":""}}`
-  - Expected: Zod validation error (min length 1)
-  - Pass: `isError: true`
-
-- [ ] **1.7 Build-Context-Memory.json is valid JSON after operations**
-  - After 1.3, read `Build-Context-Memory.json` from project root
-  - Expected: File parses with `JSON.parse()` without error
-  - Pass: Parse succeeds, file contains sessions array
+**Usage:**
+```bash
+BUIRY_API_KEY=buiry_sk_live_xxx bash e2e-verify.sh
+```
 
 ---
 
-## 2. React App Tests
+## Step-by-Step Verification Flow
 
-- [ ] **2.1 Start dev server**
-  - Run: `cd apps/web && npm run dev`
-  - Expected: Vite dev server starts on port (default 5173)
-  - Pass: Server ready within 10s, no crash
+### Step 1: Health Check
+- **Endpoint:** `GET /health`
+- **Expected:** Backend responds with `{"postgres": "connected", "redis": "connected"}`
+- **Pass criteria:** HTTP 200, PostgreSQL reports "connected"
 
-- [ ] **2.2 Dashboard loads**
-  - Navigate to `http://localhost:5173/`
-  - Expected: Hero card with project identity, stats row, chart component, decisions list
-  - Pass: Page renders without blank screen or error boundary
+### Step 2: API Key Bootstrap
+- **Endpoint:** `POST /api/bootstrap-keys`
+- **Expected:** Seeds initial API keys into the database
+- **Pass criteria:** Response contains `"success": true` and `keys_count`
 
-- [ ] **2.3 Session Explorer**
-  - Navigate to `/sessions`
-  - Expected: Session list with timeline visualization
-  - Pass: Timeline elements visible, session cards listed
+### Step 3: Auth — Signup
+- **Endpoint:** `POST /api/auth/signup`
+- **Body:** `{"email":"e2etest@buiry.dev","password":"test12345678","name":"E2E Test"}`
+- **Expected:** JWT token returned
+- **Pass criteria:** Response contains `"token"` field
+- **Fallback:** If user exists, calls `POST /api/auth/login` instead
 
-- [ ] **2.4 Session card expansion**
-  - Click a session card in Session Explorer
-  - Expected: Card expands to show details (phase, progress, next_steps)
-  - Pass: Expanded content visible, no layout shift
+### Step 4: API Keys — List
+- **Endpoint:** `GET /api/keys`
+- **Headers:** `x-api-key: <API_KEY>`
+- **Expected:** List of API keys (masked)
+- **Pass criteria:** Response contains `"keys"` array with `"total"` count
 
-- [ ] **2.5 Context Search modal**
-  - Press `Cmd+K` (Mac) or `Ctrl+K` (Linux) on any page
-  - Expected: Search modal opens, input is focused
-  - Pass: Modal overlay visible, text input accepts keystrokes
+### Step 5: API Keys — Create
+- **Endpoint:** `POST /api/keys`
+- **Headers:** `x-api-key: <API_KEY>`
+- **Body:** `{"name":"e2e-test-key"}`
+- **Expected:** New API key generated
+- **Pass criteria:** Response contains `"api_key"` field starting with `buiry_`
 
-- [ ] **2.6 Settings page**
-  - Navigate to `/settings`
-  - Expected: Settings page renders with configuration options
-  - Pass: No 404, no blank page
+### Step 6: Cloud Session — Start
+- **Endpoint:** `POST /api/session/cloud/start`
+- **Headers:** `x-api-key: <API_KEY>`
+- **Expected:** Project context with session history
+- **Pass criteria:** Response contains `"project_identity"` and `"total_sessions"`
 
-- [ ] **2.7 Dataset Browser**
-  - Navigate to `/datasets`
-  - Expected: Dataset cards render with dataset info
-  - Pass: At least one card element visible
+### Step 7: Cloud Session — End
+- **Endpoint:** `POST /api/session/cloud/end`
+- **Body:** Full session object with `session_id`, `timestamp`, `ai_agent`, `progress`, `decisions_log`, `known_issues`, `next_steps`
+- **Expected:** Session saved successfully
+- **Pass criteria:** Response contains `"success": true` and `"stored_in"` (e.g., `"postgresql"`)
 
-- [ ] **2.8 Onboarding wizard**
-  - Navigate to `/onboarding`
-  - Expected: Wizard renders with step indicators
-  - Pass: Step 1 visible, next/prev navigation functional
+### Step 8: Context Search
+- **Endpoint:** `POST /api/context/search`
+- **Body:** `{"query":"e2e"}`
+- **Expected:** Search results from session history
+- **Pass criteria:** Response contains `"total"` with match count ≥ 0
 
----
-
-## 3. ADK Agent Tests
-
-- [ ] **3.1 Python syntax compiles**
-  - Run: `python3 -c "import ast; ast.parse(open('packages/adk-agents/agents/orchestrator.py').read())"`
-  - Expected: No SyntaxError
-  - Pass: Exit code 0
-
-- [ ] **3.2 Sub-agent files exist and compile**
-  - Run: `python3 -c "import ast; ast.parse(open('packages/adk-agents/agents/coordinator.py').read())"`
-  - Run: `python3 -c "import ast; ast.parse(open('packages/adk-agents/agents/dev_agent.py').read())"`
-  - Run: `python3 -c "import ast; ast.parse(open('packages/adk-agents/agents/review_agent.py').read())"`
-  - Expected: No SyntaxError for any file
-  - Pass: All three exit code 0
-
-- [ ] **3.3 Orchestrator defines root_agent with 3 sub-agents**
-  - Read `orchestrator.py`, verify it defines `root_agent = SequentialAgent(...)` with `sub_agents=[coordinator, dev_agent, review_agent]`
-  - Expected: Variable `root_agent` present, 3 sub-agents in list
-  - Pass: Pattern match confirms structure
-
-- [ ] **3.4 Agent imports work (if google-adk installed)**
-  - Run: `pip show google-adk` (if installed)
-  - Expected: Package info displayed
-  - Pass: If not installed, skip test with note
+### Step 9: Settings Profile
+- **Endpoint:** `GET /api/settings/profile`
+- **Headers:** `x-api-key: <API_KEY>`
+- **Expected:** User/settings profile data
+- **Pass criteria:** Response contains `"profile"` or `"settings"` field
 
 ---
 
-## 4. Integration Test
+## Expected Responses
 
-- [ ] **4.1 Simultaneous startup**
-  - Start MCP server: `node packages/buiry-mcp/dist/index.js &`
-  - Start React dev server: `cd apps/web && npm run dev &`
-  - Expected: Both processes run without port conflict (MCP uses stdio, React uses HTTP)
-  - Pass: Both processes alive after 5s
+### Health Check
+```json
+{
+  "status": "ok",
+  "postgres": "connected",
+  "redis": "connected"
+}
+```
 
-- [ ] **4.2 MCP server responds while React is running**
-  - With both running, send a `buiry_start_session` JSON-RPC request to MCP server
-  - Expected: Response received, React dev server unaffected
-  - Pass: MCP responds, React page still accessible
+### Session Start
+```json
+{
+  "project_identity": {
+    "name": "Buiry",
+    "description": "Persistent Memory for AI Coding Agents"
+  },
+  "last_5_sessions": [...],
+  "open_issues": [...],
+  "summary": "..."
+}
+```
 
-- [ ] **4.3 Clean shutdown**
-  - Kill both processes
-  - Expected: Exit code 0 or SIGTERM for both, no orphan processes
-  - Pass: `ps aux | grep buiry` returns nothing
+### Session End
+```json
+{
+  "success": true,
+  "session_id": "sess_e2e_...",
+  "stored_in": "postgresql",
+  "total_sessions": 15
+}
+```
+
+### Context Search
+```json
+{
+  "query": "e2e",
+  "total": 1,
+  "sessions": [...]
+}
+```
 
 ---
 
-## 5. Build Verification
+## Test Summary
 
-- [ ] **5.1 MCP server — TypeScript compilation**
-  - Run: `cd packages/buiry-mcp && npm run build`
-  - Expected: `tsc` compiles with 0 errors, `dist/index.js` produced
-  - Pass: Exit code 0, dist/index.js exists
+| Step | Endpoint | Critical? |
+|------|----------|-----------|
+| 1 | `GET /health` | Yes |
+| 2 | `POST /api/bootstrap-keys` | No |
+| 3 | `POST /api/auth/signup` | Yes |
+| 4 | `GET /api/keys` | Yes |
+| 5 | `POST /api/keys` | Yes |
+| 6 | `POST /api/session/cloud/start` | Yes |
+| 7 | `POST /api/session/cloud/end` | Yes |
+| 8 | `POST /api/context/search` | Yes |
+| 9 | `GET /api/settings/profile` | No |
 
-- [ ] **5.2 MCP server — type check only**
-  - Run: `cd packages/buiry-mcp && npx tsc --noEmit`
-  - Expected: 0 errors
-  - Pass: Exit code 0
-
-- [ ] **5.3 React app — type check only**
-  - Run: `cd apps/web && npx tsc --noEmit`
-  - Expected: 0 errors
-  - Pass: Exit code 0
-
-- [ ] **5.4 React app — production build**
-  - Run: `cd apps/web && npm run build`
-  - Expected: Vite build succeeds, `dist/` folder created
-  - Pass: Exit code 0, index.html in dist/
+**Total:** 9 steps, 7 critical, 2 non-critical
 
 ---
 
-## Summary
+## Pass Criteria
 
-| Section | Total Tests |
-|---------|-------------|
-| MCP Server | 7 |
-| React App | 8 |
-| ADK Agent | 4 |
-| Integration | 3 |
-| Build Verification | 4 |
-| **Total** | **26** |
-
-### Pass Criteria
-
-- **All pass:** Submission is ready
-- **Fail in Section 5 (Build):** Hard blocker — fix before submission
-- **Fail in Section 1 (MCP) or Section 3 (ADK):** Fix before submission
-- **Fail in Section 2 (React):** Document known issues, submit with notes
-- **Fail in Section 4 (Integration):** May submit if individual components pass
+- **All critical steps pass:** E2E is healthy, ready for demo
+- **Critical step fails:** Fix before recording demo
+- **Non-critical step fails:** Document and proceed — these are auxiliary endpoints
