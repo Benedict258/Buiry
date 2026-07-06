@@ -25,8 +25,6 @@ import { initApiKeysTable, bootstrapDefaultKey } from './db/keys.js'
 import { initProjectsTable } from './db/projects.js'
 import { getPool } from './db/pool.js'
 import { readFileSync } from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
 
 const app = express()
 
@@ -104,17 +102,10 @@ async function bootstrap() {
 
 async function initSessionIsolation() {
   try {
-    const __filename = fileURLToPath(import.meta.url)
-    const __dirname = dirname(__filename)
-    const migration = readFileSync(
-      join(__dirname, 'db', 'migrations', '002_session_isolation.sql'),
-      'utf-8'
-    )
-    const pool = getPool()
-    await pool.query(migration)
-    console.log('[Init] Session isolation migration applied')
+    await getPool().query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS api_key_id UUID`)
+    console.log('[Init] Session isolation applied')
   } catch (err: any) {
-    console.warn('[Init] Session isolation migration failed:', err?.message || err)
+    console.warn('[Init] Session isolation failed:', err?.message || err)
   }
 }
 
