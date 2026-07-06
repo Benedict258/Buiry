@@ -105,7 +105,7 @@ export async function getDatasets(): Promise<{ datasets: Dataset[]; storageError
         headers['x-api-key'] = key;
       }
     }
-    const res = await fetch(`${API_URL}/api/datasets`, { headers });
+    const res = await fetch(`${API_URL}/api/dataset`, { headers });
     const body = await res.json();
     if (body.fallback) {
       return { datasets: [], storageError: true };
