@@ -32,11 +32,13 @@ function mapSession(s: SessionObject): SessionCardData {
       : "copilot";
 
   const status =
-    s.notes?.toLowerCase().includes("active") || s.notes?.toLowerCase().includes("active session")
-      ? "ACTIVE"
-      : s.notes?.toLowerCase().includes("completed")
-        ? "COMPLETED"
-        : "ARCHIVED";
+    typeof s.progress === 'number' && s.progress >= 100
+      ? "COMPLETED"
+      : typeof s.progress === 'number' && s.progress > 0
+        ? "ACTIVE"
+        : typeof s.progress === 'string' && s.progress === 'completed'
+          ? "COMPLETED"
+          : "ARCHIVED";
 
   const inputTokens = "—";
   const outputTokens = "—";
@@ -165,7 +167,29 @@ export default function SessionExplorer() {
               Historical Session Analytics &amp; Audit Logs
             </p>
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-sm">
+            <button
+              onClick={async () => {
+                const { getApiKey } = await import("../lib/api");
+                const key = getApiKey();
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                const headers: Record<string,string> = {'Content-Type':'application/json'};
+                if (key) {
+                  if (key.startsWith('Bearer ')) headers['Authorization'] = key;
+                  else headers['x-api-key'] = key;
+                }
+                try {
+                  const res = await fetch(`${API_URL}/api/dataset/generate`, { method: 'POST', headers });
+                  const data = await res.json();
+                  if (data.generated?.length) toast.success(`Generated ${data.generated.length} datasets`);
+                  else toast(data.message || 'No data to generate from');
+                } catch { toast.error('Generation failed'); }
+              }}
+              className="px-md py-sm bg-primary text-on-primary font-meta-mono text-xs rounded hover:opacity-90 transition-colors"
+            >
+              Generate Datasets
+            </button>
+            <div className="relative">
             <button
               onClick={() => setShowExport(!showExport)}
               disabled={rawSessions.length === 0}
@@ -191,6 +215,7 @@ export default function SessionExplorer() {
                 ))}
               </div>
             )}
+          </div>
           </div>
         </div>
       </header>
