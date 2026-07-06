@@ -58,6 +58,8 @@ export async function createKey(name: string, keyHash: string, keyPrefix: string
 }
 
 export async function revokeKey(id: string) {
+  // Null out projects referencing this key first
+  await query('UPDATE projects SET api_key_id = NULL WHERE api_key_id = $1', [id])
   const result = await query(
     'DELETE FROM api_keys WHERE id = $1 RETURNING id, name',
     [id]

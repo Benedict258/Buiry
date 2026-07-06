@@ -37,7 +37,11 @@ export default function Settings() {
   const [error, setError] = useState("");
   const [freshKey, setFreshKey] = useState("");
   const [copied, setCopied] = useState(false);
-  const [keyStore, setKeyStore] = useState<Record<string, string>>({});
+  const [keyStore, setKeyStore] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('buiry_key_store') || '{}');
+    } catch { return {}; }
+  });
 
   const makeHeaders = useCallback(() => {
     const key = getApiKey();
@@ -118,9 +122,10 @@ export default function Settings() {
     const newKey = await createApiKey();
     if (newKey) {
       setFreshKey(newKey);
-      // Store raw key mapped by prefix so user can copy it later
       const prefix = newKey.slice(0, 12);
-      setKeyStore(prev => ({ ...prev, [prefix]: newKey }));
+      const updated = { ...keyStore, [prefix]: newKey };
+      setKeyStore(updated);
+      localStorage.setItem('buiry_key_store', JSON.stringify(updated));
       fetchKeys();
       toast.success("API key created", { description: "Copy it now — it won't be shown again" });
     } else {
