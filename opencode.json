@@ -3,11 +3,11 @@
   "mcp": {
     "buiry": {
       "type": "local",
-      "command": ["npx", "-y", "@buiry/mcp"],
+      "command": ["npx", "-y", "@buiry/mcp@0.1.6"],
       "enabled": true,
-      "env": {
-        "BUIRY_DATA_DIR": ".buiry",
-        "BUIRY_BACKEND_URL": "https://buiry.up.railway.app"
+      "environment": {
+        "BUIRY_API_KEY": "buiry_sk_cdaf974fe527aacb8a49a0aa32fc2ddfd6127808ea33b7f7",
+        "BUIRY_CLOUD_URL": "https://buiry.up.railway.app"
       }
     }
   }

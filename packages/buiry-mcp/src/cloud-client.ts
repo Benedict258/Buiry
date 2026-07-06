@@ -54,7 +54,9 @@ export class CloudClient {
       if (!fs.existsSync(path)) return null;
       const raw = fs.readFileSync(path, "utf-8");
       const config = JSON.parse(raw);
-      return config?.mcp?.buiry?.env?.BUIRY_API_KEY || null;
+      return config?.mcp?.buiry?.environment?.BUIRY_API_KEY
+        || config?.mcp?.buiry?.env?.BUIRY_API_KEY
+        || null;
     } catch {
       return null;
     }
