@@ -115,6 +115,8 @@ app.post('/api/bootstrap-keys', async (req, res) => {
     }
     const pool = getPool()
     const client = await pool.connect()
+    // Clean up old soft-deleted keys
+    await client.query('DELETE FROM api_keys WHERE is_active = FALSE')
     const result = await client.query('SELECT COUNT(*) as count FROM api_keys')
     client.release()
     res.json({

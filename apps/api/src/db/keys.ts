@@ -40,11 +40,11 @@ export async function getKeyByHash(hash: string) {
 export async function listKeys(projectId?: string) {
   const rows = projectId
     ? (await query(
-        'SELECT id, name, project_id, key_prefix, is_active, created_at, last_used_at FROM api_keys WHERE project_id = $1 ORDER BY created_at DESC',
+        'SELECT id, name, project_id, key_prefix, is_active, created_at, last_used_at FROM api_keys WHERE project_id = $1 AND is_active = TRUE ORDER BY created_at DESC',
         [projectId]
       )).rows
     : (await query(
-        'SELECT id, name, project_id, key_prefix, is_active, created_at, last_used_at FROM api_keys ORDER BY created_at DESC'
+        'SELECT id, name, project_id, key_prefix, is_active, created_at, last_used_at FROM api_keys WHERE is_active = TRUE ORDER BY created_at DESC'
       )).rows
   return rows
 }
