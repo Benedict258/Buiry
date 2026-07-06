@@ -38,10 +38,26 @@ export class CloudClient {
   private isCloudAvailable: boolean;
 
   constructor(projectRoot: string, apiKeyOverride?: string) {
-    this.cloudUrl = process.env.BUIRY_CLOUD_URL || DEFAULT_CLOUD_URL;
-    this.apiKey = apiKeyOverride || process.env.BUIRY_API_KEY || "";
     this.projectRoot = projectRoot;
+    this.cloudUrl = process.env.BUIRY_CLOUD_URL || DEFAULT_CLOUD_URL;
+    this.apiKey = apiKeyOverride
+      || process.env.BUIRY_API_KEY
+      || CloudClient.readKeyFromConfig(projectRoot)
+      || "";
     this.isCloudAvailable = !!this.apiKey;
+  }
+
+  private static readKeyFromConfig(projectRoot: string): string | null {
+    const path = join(projectRoot, "opencode.json");
+    try {
+      const fs = require("node:fs");
+      if (!fs.existsSync(path)) return null;
+      const raw = fs.readFileSync(path, "utf-8");
+      const config = JSON.parse(raw);
+      return config?.mcp?.buiry?.env?.BUIRY_API_KEY || null;
+    } catch {
+      return null;
+    }
   }
 
   get requiresApiKey(): boolean {
