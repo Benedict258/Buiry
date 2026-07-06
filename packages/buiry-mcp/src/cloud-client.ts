@@ -48,18 +48,31 @@ export class CloudClient {
   }
 
   private static readKeyFromConfig(projectRoot: string): string | null {
-    const path = join(projectRoot, "opencode.json");
+    // Try project-level opencode.json
+    const paths = [
+      join(projectRoot, "opencode.json"),
+      join(projectRoot, "opencode.jsonc"),
+    ];
+    // Also try home directory global config
     try {
-      const fs = require("node:fs");
-      if (!fs.existsSync(path)) return null;
-      const raw = fs.readFileSync(path, "utf-8");
-      const config = JSON.parse(raw);
-      return config?.mcp?.buiry?.environment?.BUIRY_API_KEY
-        || config?.mcp?.buiry?.env?.BUIRY_API_KEY
-        || null;
-    } catch {
-      return null;
+      const home = require("node:os").homedir();
+      paths.push(join(home, ".config", "opencode", "opencode.json"));
+      paths.push(join(home, ".config", "opencode", "opencode.jsonc"));
+    } catch {}
+
+    for (const p of paths) {
+      try {
+        const fs = require("node:fs");
+        if (!fs.existsSync(p)) continue;
+        const raw = fs.readFileSync(p, "utf-8");
+        const config = JSON.parse(raw);
+        const key = config?.mcp?.buiry?.environment?.BUIRY_API_KEY
+          || config?.mcp?.buiry?.env?.BUIRY_API_KEY
+          || null;
+        if (key) return key;
+      } catch {}
     }
+    return null;
   }
 
   get requiresApiKey(): boolean {
