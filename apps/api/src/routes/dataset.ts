@@ -34,7 +34,7 @@ datasetRoutes.get('/', async (_req: Request, res: Response) => {
       console.warn('[Dataset] DB query failed:', err)
     }
   }
-  res.status(503).json({ datasets: [], error: 'Storage unavailable', fallback: true })
+  res.json({ datasets: [] })
 })
 
 datasetRoutes.get('/:id', async (req: Request, res: Response) => {
