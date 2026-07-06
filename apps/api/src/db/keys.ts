@@ -59,7 +59,7 @@ export async function createKey(name: string, keyHash: string, keyPrefix: string
 
 export async function revokeKey(id: string) {
   const result = await query(
-    'UPDATE api_keys SET is_active = FALSE WHERE id = $1 RETURNING id, name, is_active',
+    'DELETE FROM api_keys WHERE id = $1 RETURNING id, name',
     [id]
   )
   return result.rows[0] || null

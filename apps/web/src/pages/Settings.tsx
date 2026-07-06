@@ -37,6 +37,7 @@ export default function Settings() {
   const [error, setError] = useState("");
   const [freshKey, setFreshKey] = useState("");
   const [copied, setCopied] = useState(false);
+  const [keyStore, setKeyStore] = useState<Record<string, string>>({});
 
   const makeHeaders = useCallback(() => {
     const key = getApiKey();
@@ -117,8 +118,11 @@ export default function Settings() {
     const newKey = await createApiKey();
     if (newKey) {
       setFreshKey(newKey);
+      // Store raw key mapped by prefix so user can copy it later
+      const prefix = newKey.slice(0, 12);
+      setKeyStore(prev => ({ ...prev, [prefix]: newKey }));
       fetchKeys();
-      toast.success("API key created", { description: "Your new key is ready" });
+      toast.success("API key created", { description: "Copy it now — it won't be shown again" });
     } else {
       setError("Failed to create key");
     }
@@ -289,7 +293,9 @@ export default function Settings() {
                   No API keys yet. Create one above.
                 </p>
               )}
-              {keys.map((key) => (
+              {keys.map((key) => {
+                const rawKey = keyStore[key.key_prefix];
+                return (
                 <div
                   key={key.id}
                   className="flex items-center justify-between px-md py-sm bg-surface-container border border-border-subtle rounded"
@@ -309,29 +315,42 @@ export default function Settings() {
                       </span>
                     </div>
                     <div className="flex items-center gap-sm mt-1">
-                      <code className="text-text-secondary font-meta-mono text-[10px]">
-                        {key.key_prefix}...
-                      </code>
+                      {rawKey ? (
+                        <code className="text-text-primary font-meta-mono text-[10px] truncate max-w-[200px]">
+                          {rawKey}
+                        </code>
+                      ) : (
+                        <code className="text-text-secondary font-meta-mono text-[10px]">
+                          {key.key_prefix}••••••••
+                        </code>
+                      )}
                       <span className="text-text-secondary font-meta-mono text-[10px]">
                         Created {new Date(key.created_at).toLocaleDateString()}
                       </span>
-                      {key.last_used_at && (
-                        <span className="text-text-secondary font-meta-mono text-[10px]">
-                          Last used {new Date(key.last_used_at).toLocaleDateString()}
-                        </span>
-                      )}
                     </div>
                   </div>
-                  {key.is_active && isAuthed && (
-                    <button
-                      onClick={() => revokeKey(key.id)}
-                      className="px-sm py-1 border border-status-error/30 text-status-error font-meta-mono text-[10px] rounded hover:bg-status-error/10 transition-colors ml-sm"
-                    >
-                      Revoke
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {rawKey && (
+                      <button
+                        onClick={() => copyToClipboard(rawKey)}
+                        className="px-sm py-1 border border-border-subtle text-text-secondary font-meta-mono text-[10px] rounded hover:bg-surface-elevated transition-colors"
+                        title="Copy key"
+                      >
+                        Copy
+                      </button>
+                    )}
+                    {key.is_active && isAuthed && (
+                      <button
+                        onClick={() => revokeKey(key.id)}
+                        className="px-sm py-1 border border-status-error/30 text-status-error font-meta-mono text-[10px] rounded hover:bg-status-error/10 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 
