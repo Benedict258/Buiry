@@ -46,10 +46,7 @@ export default function Signup() {
       <div className="w-full max-w-sm glass-card rounded-2xl p-8 space-y-6">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <img src="/logo.png" alt="Buiry" className="w-8 h-8" />
-            <span className="font-semibold text-lg text-text-primary">
-              Buiry
-            </span>
+            <img src="/logo.png" alt="Buiry" className="h-10" />
           </div>
           <p className="text-sm text-text-secondary">Create your account</p>
         </div>

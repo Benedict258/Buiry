@@ -10,9 +10,8 @@ const navLinks = [
 
 function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-2 group">
-      <img src="/logo.png" alt="Buiry" className="w-8 h-8" />
-      <span className="font-semibold text-lg text-text-primary">Buiry</span>
+    <Link to="/">
+      <img src="/logo.png" alt="Buiry" className="h-8" />
     </Link>
   );
 }
