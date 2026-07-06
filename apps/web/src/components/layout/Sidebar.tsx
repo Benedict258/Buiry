@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, Link } from "react-router-dom";
 import { useSidebar } from "./Layout";
 import { useAuth } from "../../lib/AuthContext";
 
