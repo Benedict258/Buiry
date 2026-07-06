@@ -26,7 +26,8 @@ const INTENT_PATTERNS: { intent: Intent; patterns: RegExp[] }[] = [
   {
     intent: "end_session",
     patterns: [
-      /\b(?:done|finish|complete|wrap\s*up|that'?s\s*it|end\s*session|all\s*done|finished|wrapping\s*up)\b/i,
+      /\bend\s+.*\b(buiry|session)\b/i,
+      /\b(?:done|finish|complete|wrap\s*up|that'?s\s*it|all\s*done|finished|wrapping\s*up)\b/i,
     ],
   },
   {
@@ -39,7 +40,9 @@ const INTENT_PATTERNS: { intent: Intent; patterns: RegExp[] }[] = [
   {
     intent: "get_context",
     patterns: [
-      /\b(?:what\s+did\s+we|history|previous(?:ly)?|earlier|before|remember|recall|search\s+for|find\s+(?:any|me|the|about)|look\s+up|context\s+(?:about|for|on)|past\s+session)\b/i,
+      /\bsearch\s+buiry\s+memory\b/i,
+      /\bsearch\s+.*\b(?:buiry|memory|context|sessions?)\b/i,
+      /\b(?:what\s+did\s+we|history|previous(?:ly)?|earlier|before|remember|recall|find\s+(?:any|me|the|about)|look\s+up|context\s+(?:about|for|on)|past\s+session)\b/i,
       /\b(?:do\s+we\s+have|has\s+this\s+been|have\s+we\s+(?:seen|done|tried|built))\b/i,
     ],
   },
@@ -51,24 +54,28 @@ const INTENT_PATTERNS: { intent: Intent; patterns: RegExp[] }[] = [
     ],
   },
   {
-    intent: "start_session",
-    patterns: [
-      /\b(?:start|begin|new\s*session|let'?s\s*work|get\s*started|kick\s*off|starting|beginning)\b/i,
-    ],
-  },
-  {
     intent: "log_decision",
     patterns: [
-      /\b(?:decid(?:ed|e)|cho[so]e|decision|going\s+with|will\s+use|opt\s+for|selected|picked|went\s+with|settled\s+on)\b/i,
+      /\blog\s+(?:a\s+)?decision\b/i,
+      /\bdecid(?:ed)?\b/i,
+      /\b(?:cho(?:se|osing)|picked|selected|went\s+with|settled\s+on|going\s+with|will\s+use|opt\s+for)\b/i,
     ],
   },
   {
     intent: "flag_issue",
     patterns: [
-      /\b(?:issue|problem|blocker|bug|error|fail(?:ed|ure)|broken|not\s+working|doesn'?t\s+work|can'?t\s+(?:get|do|make))\b/i,
+      /\bflag\s+(?:an?\s+)?issue\b/i,
+      /\b(?:issue|problem|blocker|bug|error|fail(?:ed|ure))\b/i,
       /^issue\s*:/i,
       /^bug\s*:/i,
       /^problem\s*:/i,
+    ],
+  },
+  {
+    intent: "start_session",
+    patterns: [
+      /\bstart\s+.*\b(buiry|session)\b/i,
+      /\b(?:begin|new\s*session|let'?s\s*work|get\s*started|kick\s*off|starting|beginning)\b/i,
     ],
   },
 ];
@@ -88,7 +95,10 @@ function classifyIntent(message: string): Intent {
 }
 
 function extractDecision(message: string): { decision: string; rationale?: string } {
-  const cleaned = message.replace(/^(?:we\s+)?(?:decided|decide|chose|choose)\s+(?:to\s+)?/i, "").trim();
+  const cleaned = message
+    .replace(/^(?:log\s+(?:a\s+)?decision\s+(?:to\s+buiry\s*)?:?\s*)/i, "")
+    .replace(/^(?:we\s+)?(?:decided|decide|chose|choose|picked|selected)\s+(?:to\s+)?/i, "")
+    .trim();
 
   const rationalSplit = cleaned.split(/\s+(?:because|since|as|due\s+to)\s+/i);
   if (rationalSplit.length > 1) {
@@ -106,6 +116,7 @@ function extractIssue(message: string): string {
 
 function extractQuery(message: string): string {
   return message
+    .replace(/^search\s+buiry\s+memory\s+(?:for\s+)?/i, "")
     .replace(/^(?:what\s+did\s+we\s+)?(?:decide\s+about|do\s+about|know\s+about|search\s+for|find|look\s+up|recall|remember)\s+/i, "")
     .replace(/[?.!]$/, "")
     .trim();
