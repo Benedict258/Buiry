@@ -172,7 +172,7 @@ export default function SessionExplorer() {
               onClick={async () => {
                 const { getApiKey } = await import("../lib/api");
                 const key = getApiKey();
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
                 const headers: Record<string,string> = {'Content-Type':'application/json'};
                 if (key) {
                   if (key.startsWith('Bearer ')) headers['Authorization'] = key;
