@@ -60,24 +60,46 @@ async function checkRedis() {
 }
 
 async function bootstrap() {
+  // Create all tables
+  const pool = getPool()
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      session_id VARCHAR(255) UNIQUE NOT NULL,
+      agent_id VARCHAR(255),
+      current_phase VARCHAR(255),
+      api_key_id UUID,
+      data JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at DESC)`)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS datasets (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      category VARCHAR(255),
+      domain VARCHAR(255),
+      sample_size INTEGER DEFAULT 0,
+      privacy_score FLOAT DEFAULT 0,
+      walrus_blob_id VARCHAR(255),
+      sui_object_id VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`)
   await initApiKeysTable()
   await initProjectsTable()
   await initUsersTable()
   await initTokensTable()
   await initUserSettingsTable()
-  // Always seed the default dev key
+  await initSessionIsolation()
   const devKey = 'buiry_sk_live_dev_12345'
   const devHash = crypto.createHash('sha256').update(devKey).digest('hex')
   const devPrefix = devKey.slice(0, 12)
-  await bootstrapDefaultKey(devHash, devPrefix)
-  // Also seed API_KEY from env if different
+  await bootstrapDefaultKey(devHash, devPrefix).catch(() => {})
   const envKey = process.env.API_KEY
   if (envKey && envKey !== devKey) {
     const envHash = crypto.createHash('sha256').update(envKey).digest('hex')
     const envPrefix = envKey.slice(0, 12)
-    await bootstrapDefaultKey(envHash, envPrefix)
+    await bootstrapDefaultKey(envHash, envPrefix).catch(() => {})
   }
-  await initSessionIsolation()
 }
 
 async function initSessionIsolation() {
