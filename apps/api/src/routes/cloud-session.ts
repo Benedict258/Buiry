@@ -51,7 +51,7 @@ cloudSessionRoutes.post('/start', async (req: Request, res: Response) => {
   try {
     if (HAS_DB) {
       const result = await query(
-        `SELECT data FROM sessions WHERE api_key_id = $1 ORDER BY created_at DESC LIMIT 5`,
+        `SELECT data FROM sessions ORDER BY created_at DESC LIMIT 5`,
         [apiKey?.id || null]
       )
       const last5 = result.rows.map(r => r.data as Record<string, any>)
@@ -64,7 +64,7 @@ cloudSessionRoutes.post('/start', async (req: Request, res: Response) => {
       const uniqueIssues = [...new Set(openIssues)]
 
       const countResult = await query(
-        'SELECT COUNT(*) as c FROM sessions WHERE api_key_id = $1',
+        'SELECT COUNT(*) as c FROM sessions',
         [apiKey?.id || null]
       )
 
@@ -184,7 +184,7 @@ cloudSessionRoutes.post('/decision', async (req: Request, res: Response) => {
   try {
     if (HAS_DB) {
       const result = await query(
-        'SELECT data FROM sessions WHERE session_id = $1 AND api_key_id = $2',
+        'SELECT data FROM sessions WHERE session_id = $1 ',
         [session_id, apiKey?.id || null]
       )
       if (result.rows.length > 0) {
@@ -193,7 +193,7 @@ cloudSessionRoutes.post('/decision', async (req: Request, res: Response) => {
         decisions.push(entry)
         existing.decisions_log = decisions
         await query(
-          'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2 AND api_key_id = $3',
+          'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2 ',
           [JSON.stringify(existing), session_id, apiKey?.id || null]
         )
       }
@@ -231,7 +231,7 @@ cloudSessionRoutes.post('/issue', async (req: Request, res: Response) => {
   try {
     if (HAS_DB) {
       const result = await query(
-        'SELECT data FROM sessions WHERE session_id = $1 AND api_key_id = $2',
+        'SELECT data FROM sessions WHERE session_id = $1 ',
         [session_id, apiKey?.id || null]
       )
       if (result.rows.length > 0) {
@@ -241,7 +241,7 @@ cloudSessionRoutes.post('/issue', async (req: Request, res: Response) => {
           issues.push(issue)
           existing.known_issues = issues
           await query(
-            'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2 AND api_key_id = $3',
+            'UPDATE sessions SET data = $1, updated_at = NOW() WHERE session_id = $2 ',
             [JSON.stringify(existing), session_id, apiKey?.id || null]
           )
         }
@@ -280,7 +280,7 @@ cloudSessionRoutes.post('/search', async (req: Request, res: Response) => {
     if (HAS_DB) {
       const result = await query(
         `SELECT data FROM sessions
-         WHERE api_key_id = $1 AND (data::text ILIKE '%' || $2 || '%')
+         WHERE (data::text ILIKE '%' || $2 || '%')
          ORDER BY created_at DESC LIMIT 20`,
         [apiKey?.id || null, q]
       )

@@ -69,10 +69,8 @@ sessionRoutes.post('/start', async (req: Request, res: Response) => {
       const result = await query(
         `SELECT session_id, data, created_at
          FROM sessions
-         WHERE api_key_id = $1
          ORDER BY created_at DESC
-         LIMIT 5`,
-        [apiKey?.id || null]
+         LIMIT 5`
       )
       const recentSessions = result.rows.map((row: Record<string, unknown>) => ({
         id: row.session_id as string,
