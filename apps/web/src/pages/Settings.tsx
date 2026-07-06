@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { useAuth } from "../lib/AuthContext";
+import { getApiKey } from "../lib/api";
 
 const codeSnippet = `import { BuiryClient } from '@buiry/sdk';
 
@@ -12,7 +14,6 @@ const regionOptions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"];
 const retentionOptions = ["7 days", "30 days", "90 days", "1 year"];
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
-const API_KEY = import.meta.env.VITE_BUIRY_API_KEY || "";
 
 interface KeyRecord {
   id: string;
@@ -25,29 +26,41 @@ interface KeyRecord {
 }
 
 export default function Settings() {
+  const { user, token, apiKey, createApiKey } = useAuth();
   const [autoCapture, setAutoCapture] = useState(true);
   const [domain, setDomain] = useState("");
   const [region, setRegion] = useState("us-east-1");
   const [retention, setRetention] = useState("30 days");
 
-  // API Key Management
   const [keys, setKeys] = useState<KeyRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [newKeyName, setNewKeyName] = useState("");
-  const [freshKey, setFreshKey] = useState(""); // newly created key shown once
+  const [freshKey, setFreshKey] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const makeHeaders = useCallback(() => {
+    const key = getApiKey();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (key) {
+      if (key.startsWith("Bearer ")) {
+        headers["Authorization"] = key;
+      } else {
+        headers["x-api-key"] = key;
+      }
+    }
+    return headers;
+  }, []);
+
   const fetchKeys = useCallback(async () => {
-    if (!API_KEY) {
-      setError("VITE_BUIRY_API_KEY not set. Add it to your Vercel environment variables.");
+    if (!token && !getApiKey()) {
+      setError("Not authenticated. Please log in or set VITE_BUIRY_API_KEY.");
       return;
     }
     setLoading(true);
     setError("");
     try {
       const res = await fetch(`${API_URL}/api/keys`, {
-        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+        headers: makeHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -61,17 +74,15 @@ export default function Settings() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token, makeHeaders]);
 
   useEffect(() => {
     fetchKeys();
   }, [fetchKeys]);
 
   useEffect(() => {
-    if (!API_KEY) return;
-    fetch(`${API_URL}/api/settings/profile`, {
-      headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-    })
+    const headers = makeHeaders();
+    fetch(`${API_URL}/api/settings/profile`, { headers })
       .then((res) => {
         if (res.ok) return res.json();
         return null;
@@ -99,34 +110,29 @@ export default function Settings() {
   }, []);
 
   const createKey = async () => {
-    if (!newKeyName.trim()) return;
-    setError("");
-    try {
-      const res = await fetch(`${API_URL}/api/keys`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-        body: JSON.stringify({ name: newKeyName.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setFreshKey(data.api_key);
-        setNewKeyName("");
-        fetchKeys();
-        toast.success("API key created", { description: "Your new key is ready" });
-      } else {
-        const err = await res.json();
-        setError(err.error || "Failed to create key");
-      }
-    } catch {
-      setError("Cannot connect to API. Is the backend running?");
+    if (!token) {
+      toast.error("Please log in to create API keys");
+      return;
+    }
+    const newKey = await createApiKey();
+    if (newKey) {
+      setFreshKey(newKey);
+      fetchKeys();
+      toast.success("API key created", { description: "Your new key is ready" });
+    } else {
+      setError("Failed to create key");
     }
   };
 
   const revokeKey = async (id: string) => {
+    if (!token) return;
     try {
       const res = await fetch(`${API_URL}/api/keys/${id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (res.ok) {
         fetchKeys();
@@ -160,6 +166,8 @@ export default function Settings() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const isAuthed = !!user;
+
   return (
     <div className="p-lg max-w-[1200px] mx-auto space-y-lg">
       {/* Header */}
@@ -176,20 +184,17 @@ export default function Settings() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-lg">
         {/* Left Column */}
         <div className="col-span-12 md:col-span-8 space-y-lg">
-          {/* Setup Banner — shown when API_KEY is missing */}
-          {!API_KEY && (
+          {/* Setup Banner — shown when no API key or auth token */}
+          {!isAuthed && !getApiKey() && (
             <section className="bg-status-warning/10 border border-status-warning/30 rounded-lg p-lg space-y-sm">
               <h2 className="font-section-header text-sm font-semibold text-status-warning">
-                API Key Not Configured
+                Not Authenticated
               </h2>
               <p className="text-text-secondary text-sm">
-                To manage API keys, set <code className="bg-surface-container px-1 rounded text-[11px]">VITE_BUIRY_API_KEY</code> in your Vercel environment variables.
+                Log in to manage your API keys, or set{" "}
+                <code className="bg-surface-container px-1 rounded text-[11px]">VITE_BUIRY_API_KEY</code>{" "}
+                in your environment variables.
               </p>
-              <ol className="list-decimal list-inside text-sm text-text-secondary space-y-1">
-                <li>Go to Vercel Dashboard → Settings → Environment Variables</li>
-                <li>Add <code className="bg-surface-container px-1 rounded text-[11px]">VITE_BUIRY_API_KEY=buiry_sk_live_dev_12345</code></li>
-                <li>Redeploy your Vercel project</li>
-              </ol>
             </section>
           )}
           {/* Freshly Created Key Banner */}
@@ -228,6 +233,29 @@ export default function Settings() {
             </section>
           )}
 
+          {/* Your API Key (from signup) */}
+          {isAuthed && apiKey && !freshKey && (
+            <section className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-sm">
+              <h2 className="font-section-header text-sm font-semibold text-text-primary">
+                Your API Key
+              </h2>
+              <div className="flex items-center gap-sm">
+                <code className="flex-1 px-md py-sm bg-surface-container border border-border-subtle rounded font-meta-mono text-sm text-text-primary break-all">
+                  {apiKey}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(apiKey)}
+                  className="px-sm py-sm bg-surface-container border border-border-subtle rounded text-text-secondary hover:bg-surface-elevated hover:text-primary transition-colors"
+                >
+                  <span className="material-icons-round text-[16px]">content_copy</span>
+                </button>
+              </div>
+              {copied && (
+                <p className="text-status-success text-xs font-meta-mono">Copied to clipboard!</p>
+              )}
+            </section>
+          )}
+
           {/* API Keys Management */}
           <section className="bg-surface-card border border-border-subtle rounded-lg p-lg space-y-md">
             <h2 className="font-section-header text-sm font-semibold text-text-primary">
@@ -241,20 +269,13 @@ export default function Settings() {
             )}
 
             {/* Create New Key */}
-            <div className="flex gap-sm">
-              <input
-                type="text"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && createKey()}
-                placeholder="Key name (e.g. 'production', 'dev')"
-                className="flex-1 px-md py-sm bg-surface-container border border-border-subtle rounded text-text-primary text-sm font-body-base focus:outline-none focus:border-primary/50 transition-colors"
-              />
+            <div className="flex gap-sm justify-end">
               <button
                 onClick={createKey}
+                disabled={!isAuthed || loading}
                 className="px-md py-sm bg-primary text-on-primary font-body-base text-sm font-medium rounded hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Loading..." : newKeyName.trim() ? "Create Key" : "Type a name"}
+                {loading ? "Loading..." : "Generate New Key"}
               </button>
             </div>
 
@@ -301,7 +322,7 @@ export default function Settings() {
                       )}
                     </div>
                   </div>
-                  {key.is_active && (
+                  {key.is_active && isAuthed && (
                     <button
                       onClick={() => revokeKey(key.id)}
                       className="px-sm py-1 border border-status-error/30 text-status-error font-meta-mono text-[10px] rounded hover:bg-status-error/10 transition-colors ml-sm"
@@ -393,11 +414,11 @@ export default function Settings() {
 
             <button
               onClick={async () => {
-                if (!API_KEY) return;
+                const headers = makeHeaders();
                 try {
                   const res = await fetch(`${API_URL}/api/settings/profile`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+                    headers,
                     body: JSON.stringify({
                       auto_capture: autoCapture,
                       domain,

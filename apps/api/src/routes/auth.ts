@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 import crypto from 'crypto'
 import { query, getPool } from '../db/pool.js'
+import { getOrCreateUserApiKey, getUserByToken, createKey } from '../db/keys.js'
 
 export const authRoutes = Router()
 
@@ -53,17 +54,6 @@ function verifyPassword(password: string, salt: string, storedHash: string): boo
 
 function generateToken(): string {
   return crypto.randomBytes(32).toString('hex')
-}
-
-async function getUserByToken(token: string) {
-  const result = await query(
-    `SELECT users.id, users.email, users.name, users.created_at
-     FROM tokens
-     JOIN users ON users.id = tokens.user_id
-     WHERE tokens.token = $1`,
-    [token]
-  )
-  return result.rows[0] || null
 }
 
 export function bearerAuthMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -129,7 +119,10 @@ authRoutes.post('/signup', async (req: Request, res: Response) => {
       [user.id, token]
     )
 
-    res.status(201).json({ user, token })
+    const apiKeyResult = await getOrCreateUserApiKey(user.id, user.email)
+    const apiKey = (apiKeyResult as any).raw_key
+
+    res.status(201).json({ user, token, api_key: apiKey })
   } catch (err) {
     console.error('Signup error:', err)
     res.status(500).json({ error: 'Failed to create account' })
@@ -165,7 +158,14 @@ authRoutes.post('/login', async (req: Request, res: Response) => {
     )
 
     const { password_hash, salt, ...safeUser } = user
-    res.json({ user: safeUser, token })
+
+    const existingKey = await query(
+      'SELECT key_prefix FROM api_keys WHERE user_id = $1 AND is_active = TRUE LIMIT 1',
+      [user.id]
+    )
+    const apiKeyPrefix = existingKey.rows[0]?.key_prefix || null
+
+    res.json({ user: safeUser, token, api_key_prefix: apiKeyPrefix })
   } catch (err) {
     console.error('Login error:', err)
     res.status(500).json({ error: 'Failed to login' })
@@ -179,5 +179,42 @@ authRoutes.get('/me', bearerAuthMiddleware, async (req: Request, res: Response) 
   } catch (err) {
     console.error('Get me error:', err)
     res.status(500).json({ error: 'Failed to get user' })
+  }
+})
+
+authRoutes.post('/key', bearerAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user
+
+    const rawKey = `buiry_sk_${crypto.randomBytes(24).toString('hex')}`
+    const prefix = rawKey.slice(0, 12)
+    const hash = crypto.createHash('sha256').update(rawKey).digest('hex')
+
+    const key = await createKey(user.email, hash, prefix, 'default', user.email, user.id)
+
+    res.status(201).json({
+      key,
+      api_key: rawKey,
+      warning: 'Store this key securely. It will not be shown again.',
+    })
+  } catch (err) {
+    console.error('Create user key error:', err)
+    res.status(500).json({ error: 'Failed to create API key' })
+  }
+})
+
+authRoutes.get('/key', bearerAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user
+
+    const result = await query(
+      'SELECT id, name, project_id, key_prefix, is_active, created_at, last_used_at FROM api_keys WHERE user_id = $1 ORDER BY created_at DESC',
+      [user.id]
+    )
+
+    res.json({ keys: result.rows })
+  } catch (err) {
+    console.error('Get user keys error:', err)
+    res.status(500).json({ error: 'Failed to get API keys' })
   }
 })

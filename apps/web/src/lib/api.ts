@@ -3,12 +3,23 @@
 import type { BuildContextMemory, SessionObject } from './types';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
-const API_KEY = import.meta.env.VITE_BUIRY_API_KEY || '';
+
+function getApiKey(): string {
+  const token = localStorage.getItem('buiry_token');
+  return token ? `Bearer ${token}` : (import.meta.env.VITE_BUIRY_API_KEY || '');
+}
 
 async function apiRequest<T>(path: string, body?: unknown, method?: string): Promise<T | null> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (API_KEY) headers['x-api-key'] = API_KEY;
+    const key = getApiKey();
+    if (key) {
+      if (key.startsWith('Bearer ')) {
+        headers['Authorization'] = key;
+      } else {
+        headers['x-api-key'] = key;
+      }
+    }
     const res = await fetch(`${API_URL}${path}`, {
       method: method || (body ? 'POST' : 'GET'),
       headers,
@@ -86,7 +97,14 @@ export interface Dataset {
 export async function getDatasets(): Promise<{ datasets: Dataset[]; storageError?: boolean }> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (API_KEY) headers['x-api-key'] = API_KEY;
+    const key = getApiKey();
+    if (key) {
+      if (key.startsWith('Bearer ')) {
+        headers['Authorization'] = key;
+      } else {
+        headers['x-api-key'] = key;
+      }
+    }
     const res = await fetch(`${API_URL}/api/datasets`, { headers });
     const body = await res.json();
     if (body.fallback) {
@@ -163,3 +181,5 @@ export async function deleteProject(id: string): Promise<boolean> {
   const data = await apiRequest<{ deleted: boolean }>(`/api/projects/${id}`, undefined, 'DELETE');
   return data?.deleted ?? false;
 }
+
+export { getApiKey };
