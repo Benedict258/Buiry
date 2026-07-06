@@ -31,7 +31,7 @@ export async function handleSync(
   detectProjectRoot: () => string
 ) {
   const root = args.project_root || detectProjectRoot();
-  const cloud = new CloudClient(root);
+  const cloud = new CloudClient(root, args.api_key);
 
   if (cloud.requiresApiKey && !args.api_key) {
     return {

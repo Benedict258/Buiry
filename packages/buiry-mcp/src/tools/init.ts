@@ -11,14 +11,18 @@ export const initArgs = {
     .describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
   project_name: z.string().min(1).describe("Name of the project"),
   project_description: z.string().min(1).describe("Short description of the project"),
+  api_key: z
+    .string()
+    .optional()
+    .describe("Buiry API key (defaults to BUIRY_API_KEY env var)"),
 };
 
 export async function handleInit(
-  args: { project_root?: string; project_name: string; project_description: string },
+  args: { project_root?: string; project_name: string; project_description: string; api_key?: string },
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  const cloud = new CloudClient(root);
+  const cloud = new CloudClient(root, args.api_key);
 
   if (cloud.requiresApiKey) {
     return {

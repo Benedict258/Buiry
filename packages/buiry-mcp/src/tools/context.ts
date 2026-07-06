@@ -5,25 +5,18 @@ import { z } from "zod";
 import { CloudClient } from "../cloud-client.js";
 
 export const getContextArgs = {
-  project_root: z
-    .string()
-    .optional()
-    .describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
+  project_root: z.string().optional().describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
   query: z.string().min(1).describe("Keyword search query"),
-  limit: z
-    .number()
-    .min(1)
-    .max(50)
-    .optional()
-    .describe("Max number of results to return"),
+  limit: z.number().min(1).max(50).optional().describe("Max number of results to return"),
+  api_key: z.string().optional().describe("Buiry API key (defaults to BUIRY_API_KEY env var)"),
 };
 
 export async function handleGetContext(
-  args: { project_root?: string; query: string; limit?: number },
+  args: { project_root?: string; query: string; limit?: number; api_key?: string },
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  const cloud = new CloudClient(root);
+  const cloud = new CloudClient(root, args.api_key);
 
   if (cloud.requiresApiKey) {
     return {

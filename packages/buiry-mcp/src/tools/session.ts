@@ -6,18 +6,16 @@ import { validateSession } from "../types.js";
 import { CloudClient } from "../cloud-client.js";
 
 export const startSessionArgs = {
-  project_root: z
-    .string()
-    .optional()
-    .describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
+  project_root: z.string().optional().describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
+  api_key: z.string().optional().describe("Buiry API key (defaults to BUIRY_API_KEY env var)"),
 };
 
 export async function handleStartSession(
-  args: { project_root?: string },
+  args: { project_root?: string; api_key?: string },
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  const cloud = new CloudClient(root);
+  const cloud = new CloudClient(root, args.api_key);
 
   if (cloud.requiresApiKey) {
     return {
@@ -49,21 +47,17 @@ export async function handleStartSession(
 }
 
 export const endSessionArgs = {
-  project_root: z
-    .string()
-    .optional()
-    .describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
-  session: z
-    .record(z.string(), z.unknown())
-    .describe("Session object to validate and append"),
+  project_root: z.string().optional().describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
+  session: z.record(z.string(), z.unknown()).describe("Session object to validate and append"),
+  api_key: z.string().optional().describe("Buiry API key (defaults to BUIRY_API_KEY env var)"),
 };
 
 export async function handleEndSession(
-  args: { project_root?: string; session: Record<string, unknown> },
+  args: { project_root?: string; session: Record<string, unknown>; api_key?: string },
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  const cloud = new CloudClient(root);
+  const cloud = new CloudClient(root, args.api_key);
 
   if (cloud.requiresApiKey) {
     return {
@@ -112,17 +106,12 @@ export async function handleEndSession(
 }
 
 export const logDecisionArgs = {
-  project_root: z
-    .string()
-    .optional()
-    .describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
+  project_root: z.string().optional().describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
   timestamp: z.string().min(1).describe("ISO timestamp of the decision"),
   decision: z.string().min(1).describe("The decision that was made"),
   rationale: z.string().min(1).describe("Why this decision was made"),
-  alternatives_considered: z
-    .array(z.string())
-    .optional()
-    .describe("Other options that were considered"),
+  alternatives_considered: z.array(z.string()).optional().describe("Other options that were considered"),
+  api_key: z.string().optional().describe("Buiry API key (defaults to BUIRY_API_KEY env var)"),
 };
 
 export async function handleLogDecision(
@@ -132,11 +121,12 @@ export async function handleLogDecision(
     decision: string;
     rationale: string;
     alternatives_considered?: string[];
+    api_key?: string;
   },
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  const cloud = new CloudClient(root);
+  const cloud = new CloudClient(root, args.api_key);
 
   if (cloud.requiresApiKey) {
     return {
@@ -170,19 +160,17 @@ export async function handleLogDecision(
 }
 
 export const flagIssueArgs = {
-  project_root: z
-    .string()
-    .optional()
-    .describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
+  project_root: z.string().optional().describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
   issue: z.string().min(1).describe("Description of the issue to flag"),
+  api_key: z.string().optional().describe("Buiry API key (defaults to BUIRY_API_KEY env var)"),
 };
 
 export async function handleFlagIssue(
-  args: { project_root?: string; issue: string },
+  args: { project_root?: string; issue: string; api_key?: string },
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
-  const cloud = new CloudClient(root);
+  const cloud = new CloudClient(root, args.api_key);
 
   if (cloud.requiresApiKey) {
     return {

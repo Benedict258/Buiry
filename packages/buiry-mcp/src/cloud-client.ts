@@ -37,9 +37,9 @@ export class CloudClient {
   private projectRoot: string;
   private isCloudAvailable: boolean;
 
-  constructor(projectRoot: string) {
+  constructor(projectRoot: string, apiKeyOverride?: string) {
     this.cloudUrl = process.env.BUIRY_CLOUD_URL || DEFAULT_CLOUD_URL;
-    this.apiKey = process.env.BUIRY_API_KEY || "";
+    this.apiKey = apiKeyOverride || process.env.BUIRY_API_KEY || "";
     this.projectRoot = projectRoot;
     this.isCloudAvailable = !!this.apiKey;
   }

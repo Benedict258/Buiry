@@ -166,15 +166,17 @@ function buildParams(intent: Intent, message: string): Record<string, unknown> {
 export const executeArgs = {
   message: z.string().min(1).describe("Raw user message to classify and route"),
   project_root: z.string().optional().describe("Path to project root (defaults to cwd or BUIRY_PROJECT_ROOT)"),
+  api_key: z.string().optional().describe("Buiry API key (defaults to BUIRY_API_KEY env var)"),
 };
 
 export async function handleExecute(
-  args: { message: string; project_root?: string },
+  args: { message: string; project_root?: string; api_key?: string },
   detectProjectRoot: () => string
 ) {
   const root = args.project_root ?? detectProjectRoot();
   const intent = classifyIntent(args.message);
   const params = buildParams(intent, args.message);
+  const ak = args.api_key;
 
   const result = {
     intent,
@@ -202,11 +204,11 @@ export async function handleExecute(
 
     switch (intent) {
       case "start_session":
-        toolResult = await handleStartSession({ project_root: root }, detectProjectRoot);
+        toolResult = await handleStartSession({ project_root: root, api_key: ak }, detectProjectRoot);
         break;
       case "end_session":
         toolResult = await handleEndSession(
-          { project_root: root, session: {} as Record<string, unknown> },
+          { project_root: root, session: {} as Record<string, unknown>, api_key: ak },
           detectProjectRoot
         );
         break;
@@ -217,19 +219,20 @@ export async function handleExecute(
             timestamp: params.timestamp as string,
             decision: params.decision as string,
             rationale: params.rationale as string,
+            api_key: ak,
           },
           detectProjectRoot
         );
         break;
       case "flag_issue":
         toolResult = await handleFlagIssue(
-          { project_root: root, issue: params.issue as string },
+          { project_root: root, issue: params.issue as string, api_key: ak },
           detectProjectRoot
         );
         break;
       case "get_context":
         toolResult = await handleGetContext(
-          { project_root: root, query: params.query as string },
+          { project_root: root, query: params.query as string, api_key: ak },
           detectProjectRoot
         );
         break;
@@ -248,6 +251,7 @@ export async function handleExecute(
             project_root: root,
             project_name: "Untitled",
             project_description: "No description provided",
+            api_key: ak,
           },
           detectProjectRoot
         );
