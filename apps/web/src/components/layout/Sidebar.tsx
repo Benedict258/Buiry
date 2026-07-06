@@ -33,7 +33,10 @@ export default function Sidebar() {
       >
         <div className="flex items-center justify-between px-md py-lg">
           <div>
-            <h1 className="text-headline-lg font-bold text-text-primary">Buiry</h1>
+            <Link to="/" className="flex items-center gap-2">
+              <img src="/logo.png" alt="Buiry" className="w-6 h-6" />
+              <h1 className="text-headline-lg font-bold text-text-primary">Buiry</h1>
+            </Link>
             <p className="font-meta-mono text-xs text-on-surface-variant mt-xs">
               Own your AI's training data
             </p>

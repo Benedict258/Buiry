@@ -46,9 +46,7 @@ export default function Signup() {
       <div className="w-full max-w-sm glass-card rounded-2xl p-8 space-y-6">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-on-primary font-bold text-sm">
-              B
-            </span>
+            <img src="/logo.png" alt="Buiry" className="w-8 h-8" />
             <span className="font-semibold text-lg text-text-primary">
               Buiry
             </span>
